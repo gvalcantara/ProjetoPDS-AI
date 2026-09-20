@@ -1,0 +1,36 @@
+```txt
+# ============================================
+# ProjetoPDS-AI
+# Processamento Digital de Sinais
+# SoccerTrack v2 / Computer Vision
+# ============================================
+
+# --- Hugging Face / Dataset ---
+huggingface_hub
+
+# --- Numerical Computing ---
+numpy
+scipy
+pandas
+
+# --- Computer Vision ---
+opencv-python
+
+# --- Visualization ---
+matplotlib
+
+# --- Machine Learning ---
+scikit-learn
+
+# --- Deep Learning ---
+torch
+torchvision
+
+# --- Notebooks ---
+jupyter
+ipykernel
+
+# --- Utilities ---
+tqdm
+PyYAML
+```
