@@ -1,3 +1,5 @@
 /data
 /.venv
-/SoccerTrack-v2
+/SoccerTrackv2
+/runs
+/weights
