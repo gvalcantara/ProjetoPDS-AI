@@ -98,13 +98,13 @@ print("CUDA disponível:", torch.cuda.is_available())
 
 `src/tools/field_projection.py` detecta jogadores em um frame e mostra a imagem
 junto ao campo normalizado de -1 a 1 em ambos os eixos. Use um YAML gerado pela
-seleção de campo de `src/test.py`, com linhas `top`, `bottom`, `left` e `right`:
+seleção de campo de `src/tools/annotate_field.py`, com linhas `top`, `bottom`, `left` e `right`:
 
 ```bash
 python src/tools/field_projection.py \
     --video SoccerTrackv2/mot/clips/132877.mp4 \
     --field SoccerTrackv2/mot/field/132877.yaml \
-    --model weights/best.pt --frame 60 --cameramodel fisheye
+    --model weights/best.pt --frame 60 --camera-model fisheye
 ```
 
 O frame é numerado a partir de 1. Os pontos do YAML devem pertencer ao mesmo
@@ -113,7 +113,7 @@ ter uma classe chamada `player` ou `person`; use `--class-id` para especificar
 outra classe. `--conf` define o limiar de confiança (padrão 0,25).
 
 Acrescente `--camera-params caminho/camera.yaml` para salvar os parâmetros
-da lente e os coeficientes de distorção. O arquivo é sobrescrito se já
+da lente, os coeficientes de distorção e a homografia. O arquivo é sobrescrito se já
 existir. O argumento é de saída: cada execução ainda estima os parâmetros a
 partir das marcações. No modelo radial, `division_k1` é o coeficiente do modelo
 de divisão usado pelo script, não um coeficiente radial OpenCV. No fisheye,
@@ -121,7 +121,7 @@ o modelo equidistante estima a distância focal, mas fixa os quatro coeficientes
 adicionais em zero; eles não são estimados a partir das marcações. A matriz da
 câmera é calculada com centro óptico fixo e distâncias focais iguais.
 
-Na seleção de campo de `src/test.py`, use `C` para marcar a linha central,
+Na seleção de campo de `src/tools/annotate_field.py`, use `C` para marcar a linha central,
 incluindo seus encontros com as linhas superior e inferior. Ao confirmar, os
 cantos compartilhados são obtidos pela média dos extremos marcados nas linhas
 adjacentes, e os extremos da linha central são inseridos nas linhas superior e
@@ -134,8 +134,8 @@ Para adicionar o ponto central a um YAML já marcado, edite o mesmo frame usado
 na marcação original:
 
 ```bash
-python src/test.py --video SoccerTrackv2/mot/clips/132877.mp4 \
-    --editfield SoccerTrackv2/mot/field/132877.yaml --frame 60
+python src/tools/annotate_field.py --video SoccerTrackv2/mot/clips/132877.mp4 \
+    --output SoccerTrackv2/mot/field/132877.yaml --frame 60 --edit
 ```
 
 Pressione `P`, clique no ponto central e pressione Enter para salvar. O campo
@@ -143,7 +143,7 @@ Pressione `P`, clique no ponto central e pressione Enter para salvar. O campo
 projeção o associa a `(0, 0)` e mantém as linhas superior e inferior em
 `y = -1` e `y = 1` no modelo ajustado; isto pode alterar as coordenadas laterais.
 
-`--cameramodel` aceita `radial` (padrão, modelo de divisão com um coeficiente)
+`--camera-model` aceita `radial` (padrão, modelo de divisão com um coeficiente)
 ou `fisheye` (modelo equidistante com distância focal ajustada). Ambos fixam
 o centro óptico no centro da imagem e aplicam uma homografia após a correção.
 O fisheye é uma aproximação, não uma calibração completa de lente; suas
@@ -154,60 +154,32 @@ marcações internas conhecidas e considere calibrar a lente se o ajuste for rui
 Uma linha com apenas dois pontos não informa sua curvatura. Pontos projetados
 fora do campo são exibidos sem limitar as coordenadas.
 
-### YOLO Video Detection
+### Vídeo com jogadores projetados
 
-Ferramenta de linha de comando para executar modelos YOLO sobre vídeos, desenhando bounding boxes nas detecções e salvando o resultado.
-
-**Localização:** `src/tools/yolo_video.py`
-
-#### Utilização
+Para criar ou editar a marcação sem executar o modelo:
 
 ```bash
-python src/tools/yolo_video.py \
-    --weights weights/best.pt \
-    --video data/video.mp4
+python src/tools/annotate_field.py --video caminho/video.mp4 \
+    --output caminho/campo.yaml --frame 60
 ```
 
-#### Parâmetros
-
-| Parâmetro | Obrigatório | Padrão | Descrição |
-|---|---|---|---|
-| `--weights` | Sim | — | Caminho para os pesos do modelo YOLO. |
-| `--video` | Sim | — | Caminho para o vídeo de entrada. |
-| `--show` | Não | `False` | Exibe o vídeo durante a inferência. |
-| `--conf` | Não | `0.25` | Confiança mínima das detecções. |
-| `--imgsz` | Não | `640` | Resolução de entrada da rede. |
-| `--output` | Não | `yolo_testes` | Diretório para salvar os resultados. |
-
-#### Exemplos
-
-**Exibir o vídeo durante a inferência:**
+Acrescente `--edit` para carregar e editar um YAML existente. Primeiro gere o
+YAML de câmera usando `field_projection.py` e `--camera-params`. Depois execute:
 
 ```bash
-python src/tools/yolo_video.py \
-    --weights weights/best.pt \
-    --video data/video.mp4 \
-    --show
-```
-
-**Alterar o limiar de confiança e a resolução:**
-
-```bash
-python src/tools/yolo_video.py \
-    --weights weights/best.pt \
-    --video data/video.mp4 \
-    --conf 0.4 \
-    --imgsz 1280
-```
-
-**Definir diretório de saída:**
-
-```bash
-python src/tools/yolo_video.py \
-    --weights weights/best.pt \
-    --video data/video.mp4 \
+python src/test.py --video caminho/video.mp4 --weights weights/best.pt \
+    --camera-params caminho/camera.yaml \
     --output runs/inference
 ```
+
+O resultado `<nome>_field.mp4` mostra o vídeo e o campo lado a lado. Os números
+associam detecções às posições em cada frame; não são identidades rastreadas.
+Detecções projetadas fora do campo são identificadas como `outside`. Os parâmetros
+da lente e a homografia são lidos do YAML de câmera. Arquivos de câmera antigos
+sem homografia precisam ser gerados novamente com `field_projection.py`.
+As marcações pressupõem câmera fixa durante o vídeo, e os parâmetros devem ter
+sido calculados para a resolução do vídeo. O modelo fisheye suportado é o
+modelo equidistante simplificado com coeficientes adicionais nulos.
 
 ## Dataset
 
@@ -224,6 +196,29 @@ O dataset contém informações relacionadas às partidas de futebol, incluindo:
 A organização dos dados deve preservar a estrutura original do dataset sempre que possível.
 
 ## Desenvolvimento e experimentos
+
+### Executar notebooks no Google Colab
+
+Abra um notebook diretamente da branch `main` do GitHub:
+
+| Notebook | Abrir no Colab |
+|---|---|
+| Criação do dataset | [Abrir no Colab](https://colab.research.google.com/github/gvalcantara/ProjetoPDS-AI/blob/main/notebooks/00_dataset_creator.ipynb) |
+| Treinamento | [Abrir no Colab](https://colab.research.google.com/github/gvalcantara/ProjetoPDS-AI/blob/main/notebooks/01_train.ipynb) |
+| Teste em vídeo | [Abrir no Colab](https://colab.research.google.com/github/gvalcantara/ProjetoPDS-AI/blob/main/notebooks/02_test.ipynb) |
+
+Os links abrem a versão publicada no GitHub, não alterações locais. Para usar
+outra branch, substitua `main` pelo nome dela na URL. No Colab, selecione uma
+GPU em **Ambiente de execução → Alterar tipo de ambiente de execução** para o
+treinamento e execute as células em ordem. Autorize a montagem do Google Drive
+quando solicitada e ajuste os caminhos dos dados e dos pesos para seu Drive.
+No notebook de teste, os caminhos locais e a pasta de saída também precisam ser
+ajustados para o ambiente Colab; monte o Drive antes de acessá-lo.
+
+O ambiente do Colab é temporário: guarde dados, pesos e resultados no Drive.
+Para preservar alterações feitas no notebook, use **Arquivo → Salvar uma cópia
+no Drive** ou salve uma cópia no GitHub. A abertura do notebook não inicia o
+treinamento automaticamente; ele é executado ao rodar as células.
 
 Os experimentos de aprendizado de máquina são organizados no diretório `runs/`.
 

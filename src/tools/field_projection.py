@@ -53,7 +53,8 @@ def _line(points):
 
 
 def fit_field_projection(lines, image_size, field_corners=None, radial_bounds=None,
-                         cameramodel="radial", center_line=None, center_spot=None):
+                         cameramodel="radial", center_line=None, center_spot=None,
+                         lens_parameter=None):
     """Fit projection from four ordered lists of distorted image points.
 
     image_size is (width, height). The optical center is fixed at the image
@@ -66,7 +67,7 @@ def fit_field_projection(lines, image_size, field_corners=None, radial_bounds=No
     if any(g.ndim != 2 or g.shape[1] != 2 or len(g) < 2 or
            not np.isfinite(g).all() for g in groups):
         raise ValueError("Each line needs at least two finite (x, y) points.")
-    if sum(len(g) - 2 for g in groups) < 1:
+    if lens_parameter is None and sum(len(g) - 2 for g in groups) < 1:
         raise ValueError("At least one line needs three points to estimate distortion.")
     if center_line is not None:
         middle = np.asarray(center_line, dtype=np.float64)
@@ -115,7 +116,9 @@ def fit_field_projection(lines, image_size, field_corners=None, radial_bounds=No
 
     # Scan the interval before refining, avoiding reliance on a single initial
     # guess for this one-dimensional, potentially non-convex fit.
-    grid = np.linspace(lower, upper, 257)
+    grid = np.linspace(lower, upper, 257) if lens_parameter is None else np.array([lens_parameter])
+    if lens_parameter is not None and (not np.isfinite(lens_parameter) or not lower <= lens_parameter <= upper):
+        raise ValueError("Camera parameter is outside the valid range for this image.")
     costs = np.array([cost(value) for value in grid])
     best = int(np.argmin(costs))
     left, right = grid[max(best - 1, 0)], grid[min(best + 1, len(grid) - 1)]
@@ -132,7 +135,7 @@ def fit_field_projection(lines, image_size, field_corners=None, radial_bounds=No
             b = left + ratio * (right - left)
             fb = cost(b)
     candidates = [lower, upper, (left + right) / 2]
-    radial = float(min(candidates, key=cost))
+    radial = float(min(candidates, key=cost) if lens_parameter is None else lens_parameter)
     fitted_lines = [_line(corrected(g, radial)) for g in normalized]
     corners = []
     for i in range(4):
@@ -189,13 +192,17 @@ def load_field(path):
             field.get("center"), field.get("center_spot"))
 
 
-def save_camera_parameters(path, cameramodel, image_size, center, scale, parameter):
-    """Save the actual lens parameters used by the selected correction model."""
+def save_camera_parameters(path, cameramodel, image_size, center, scale, parameter, homography):
+    """Save lens parameters and the image-to-field homography."""
+    homography = np.asarray(homography, dtype=float)
+    if homography.shape != (3, 3) or not np.isfinite(homography).all() or np.linalg.matrix_rank(homography) < 3:
+        raise ValueError("Homography must be a finite, nonsingular 3x3 matrix.")
     data = {
         "camera_model": cameramodel,
         "image_size": {"width": int(image_size[0]), "height": int(image_size[1])},
         "optical_center_pixels": [float(value) for value in center],
         "normalization_scale_pixels": float(scale),
+        "homography": homography.tolist(),
     }
     if cameramodel == "fisheye":
         # Equidistant model corresponds to OpenCV fisheye with D = 0;
@@ -214,6 +221,44 @@ def save_camera_parameters(path, cameramodel, image_size, center, scale, paramet
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as file:
         yaml.safe_dump(data, file, sort_keys=False)
+
+
+def load_camera_parameters(path, image_size):
+    """Load parameters produced by save_camera_parameters for this resolution."""
+    with Path(path).open(encoding="utf-8") as file:
+        data = yaml.safe_load(file)
+    if not isinstance(data, dict):
+        raise ValueError("Camera parameters YAML must be a mapping.")
+    width, height = image_size
+    if data.get("image_size") != {"width": width, "height": height}:
+        raise ValueError("Camera YAML image dimensions do not match the video.")
+    center = np.asarray(data.get("optical_center_pixels"), dtype=float)
+    scale = float(data.get("normalization_scale_pixels", 0))
+    if center.shape != (2,) or not np.allclose(center, [width / 2, height / 2]) or not np.isclose(scale, np.hypot(width, height) / 2):
+        raise ValueError("Camera YAML center or normalization scale is incompatible with this model.")
+    model = data.get("camera_model")
+    if model == "radial":
+        if data.get("distortion_model") != "division_normalized_radius":
+            raise ValueError("Unsupported radial distortion model.")
+        parameter = float(data["distortion_coefficients"]["division_k1"])
+    elif model == "fisheye":
+        matrix = np.asarray(data.get("camera_matrix"), dtype=float)
+        coefficients = np.asarray(data.get("distortion_coefficients"), dtype=float)
+        if matrix.shape != (3, 3) or coefficients.shape != (4,) or not np.allclose(coefficients, 0):
+            raise ValueError("Only the equidistant fisheye model with four zero coefficients is supported.")
+        focal = matrix[0, 0]
+        expected = np.array([[focal, 0, center[0]], [0, focal, center[1]], [0, 0, 1]])
+        if not np.isfinite(matrix).all() or focal <= 0 or not np.allclose(matrix, expected):
+            raise ValueError("Fisheye camera matrix is incompatible with the equidistant model.")
+        parameter = focal / scale
+    else:
+        raise ValueError("Camera model must be radial or fisheye.")
+    if not np.isfinite(parameter):
+        raise ValueError("Camera parameter must be finite.")
+    homography = np.asarray(data.get("homography"), dtype=float)
+    if homography.shape != (3, 3) or not np.isfinite(homography).all() or np.linalg.matrix_rank(homography) < 3:
+        raise ValueError("Camera YAML requires a finite, nonsingular 3x3 homography; regenerate it with field_projection.py.")
+    return model, parameter, homography
 
 
 def read_frame(video, frame_number):
@@ -253,10 +298,9 @@ def show_comparison(frame, boxes, positions, frame_number):
     all_positions = np.vstack((np.array([[-1, -1], [1, 1]]), positions))
     field_ax.set_xlim(min(-1.1, all_positions[:, 0].min() - .1), max(1.1, all_positions[:, 0].max() + .1))
     field_ax.set_ylim(max(1.1, all_positions[:, 1].max() + .1), min(-1.1, all_positions[:, 1].min() - .1))
-    colors = plt.get_cmap("tab20")
     for index, (box, position) in enumerate(zip(boxes, positions), start=1):
         x1, y1, x2, y2 = box
-        color = colors((index - 1) % 20)
+        color = "yellow"
         image_ax.add_patch(Rectangle((x1, y1), x2 - x1, y2 - y1,
                                       fill=False, edgecolor=color, linewidth=2))
         image_ax.scatter([(x1 + x2) / 2], [y2], color=[color], s=30)
@@ -273,7 +317,7 @@ def main():
     parser.add_argument("--field", type=Path, required=True, help="YAML with top, bottom, left and right field lines")
     parser.add_argument("--model", type=Path, required=True, help="Ultralytics YOLO weights")
     parser.add_argument("--frame", type=int, required=True, help="Frame number, starting at 1")
-    parser.add_argument("--cameramodel", choices=("fisheye", "radial"), default="radial",
+    parser.add_argument("--camera-model", choices=("fisheye", "radial"), default="radial",
                         help="Lens model (default: radial)")
     parser.add_argument("--camera-params", type=Path,
                         help="Save camera model and distortion coefficients to YAML (overwrites it)")
@@ -289,26 +333,26 @@ def main():
     lines, center_line, center_spot = load_field(args.field)
     height, width = frame.shape[:2]
     center, scale, radial, homography, rms, at_bound = fit_field_projection(
-        lines, (width, height), cameramodel=args.cameramodel, center_line=center_line,
+        lines, (width, height), cameramodel=args.camera_model, center_line=center_line,
         center_spot=center_spot)
-    parameter = "normalized focal length" if args.cameramodel == "fisheye" else "radial coefficient"
-    print(f"Camera model: {args.cameramodel}; {parameter}: {radial:.6f}; "
+    parameter = "normalized focal length" if args.camera_model == "fisheye" else "radial coefficient"
+    print(f"Camera model: {args.camera_model}; {parameter}: {radial:.6f}; "
           f"line RMS pixels (bottom/right/top/left{'/center' if center_line else ''}): {rms}")
     if center_line is None:
         print("Warning: no center line in YAML; left/right projection is less constrained.")
     else:
-        center_positions = project_points(center_line, center, scale, radial, homography, args.cameramodel)
+        center_positions = project_points(center_line, center, scale, radial, homography, args.camera_model)
         print(f"Center line x RMS: {np.sqrt(np.mean(center_positions[:, 0] ** 2)):.4f} "
               "(ideal: 0)")
     if center_spot is not None:
-        print("Center spot projection:", project_points(center_spot, center, scale, radial, homography, args.cameramodel))
+        print("Center spot projection:", project_points(center_spot, center, scale, radial, homography, args.camera_model))
     else:
         print("Warning: no center_spot in YAML; the field center is not independently constrained.")
     if at_bound:
         print("Warning: lens fit reached its bound; check the field points and lens model.")
     if args.camera_params:
-        save_camera_parameters(args.camera_params, args.cameramodel, (width, height),
-                               center, scale, radial)
+        save_camera_parameters(args.camera_params, args.camera_model, (width, height),
+                               center, scale, radial, homography)
         print(f"Estimated camera parameters saved to: {args.camera_params}")
 
     from ultralytics import YOLO
@@ -326,7 +370,7 @@ def main():
     result = model.predict(frame, classes=class_ids, conf=args.conf, verbose=False)[0]
     boxes = result.boxes.xyxy.cpu().numpy().reshape(-1, 4)
     feet = np.column_stack(((boxes[:, 0] + boxes[:, 2]) / 2, boxes[:, 3]))
-    positions = project_points(feet, center, scale, radial, homography, args.cameramodel)
+    positions = project_points(feet, center, scale, radial, homography, args.camera_model)
     for index, position in enumerate(positions, start=1):
         print(f"Player {index}: x={position[0]:.4f}, y={position[1]:.4f}")
     show_comparison(frame, boxes, positions, args.frame)
