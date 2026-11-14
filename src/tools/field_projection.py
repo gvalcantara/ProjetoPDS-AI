@@ -189,6 +189,33 @@ def load_field(path):
             field.get("center"), field.get("center_spot"))
 
 
+def save_camera_parameters(path, cameramodel, image_size, center, scale, parameter):
+    """Save the actual lens parameters used by the selected correction model."""
+    data = {
+        "camera_model": cameramodel,
+        "image_size": {"width": int(image_size[0]), "height": int(image_size[1])},
+        "optical_center_pixels": [float(value) for value in center],
+        "normalization_scale_pixels": float(scale),
+    }
+    if cameramodel == "fisheye":
+        # Equidistant model corresponds to OpenCV fisheye with D = 0;
+        # these zeros are fixed assumptions, not estimated coefficients.
+        focal = float(parameter * scale)
+        data["camera_matrix"] = [[focal, 0.0, float(center[0])],
+                                 [0.0, focal, float(center[1])], [0.0, 0.0, 1.0]]
+        data["distortion_coefficients"] = [0.0, 0.0, 0.0, 0.0]
+        data["distortion_coefficients_status"] = "fixed_not_estimated"
+    elif cameramodel == "radial":
+        data["distortion_coefficients"] = {"division_k1": float(parameter)}
+        data["distortion_model"] = "division_normalized_radius"
+    else:
+        raise ValueError(f"Unknown camera model: {cameramodel}")
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as file:
+        yaml.safe_dump(data, file, sort_keys=False)
+
+
 def read_frame(video, frame_number):
     if frame_number < 1:
         raise ValueError("Frame number must be at least 1 (one-based).")
@@ -248,9 +275,15 @@ def main():
     parser.add_argument("--frame", type=int, required=True, help="Frame number, starting at 1")
     parser.add_argument("--cameramodel", choices=("fisheye", "radial"), default="radial",
                         help="Lens model (default: radial)")
+    parser.add_argument("--camera-params", type=Path,
+                        help="Save camera model and distortion coefficients to YAML (overwrites it)")
     parser.add_argument("--class-id", type=int, help="Player class ID; defaults to a class named player or person")
     parser.add_argument("--conf", type=float, default=0.25)
     args = parser.parse_args()
+
+    if args.camera_params and args.camera_params.resolve() in {
+            args.field.resolve(), args.video.resolve(), args.model.resolve()}:
+        parser.error("--camera-params must be different from the input files")
 
     frame = read_frame(args.video, args.frame)
     lines, center_line, center_spot = load_field(args.field)
@@ -273,6 +306,10 @@ def main():
         print("Warning: no center_spot in YAML; the field center is not independently constrained.")
     if at_bound:
         print("Warning: lens fit reached its bound; check the field points and lens model.")
+    if args.camera_params:
+        save_camera_parameters(args.camera_params, args.cameramodel, (width, height),
+                               center, scale, radial)
+        print(f"Estimated camera parameters saved to: {args.camera_params}")
 
     from ultralytics import YOLO
     model = YOLO(str(args.model))

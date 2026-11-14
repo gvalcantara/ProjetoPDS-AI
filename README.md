@@ -112,6 +112,15 @@ frame (ou a uma câmera fixa), com as mesmas dimensões do vídeo. O modelo deve
 ter uma classe chamada `player` ou `person`; use `--class-id` para especificar
 outra classe. `--conf` define o limiar de confiança (padrão 0,25).
 
+Acrescente `--camera-params caminho/camera.yaml` para salvar os parâmetros
+da lente e os coeficientes de distorção. O arquivo é sobrescrito se já
+existir. O argumento é de saída: cada execução ainda estima os parâmetros a
+partir das marcações. No modelo radial, `division_k1` é o coeficiente do modelo
+de divisão usado pelo script, não um coeficiente radial OpenCV. No fisheye,
+o modelo equidistante estima a distância focal, mas fixa os quatro coeficientes
+adicionais em zero; eles não são estimados a partir das marcações. A matriz da
+câmera é calculada com centro óptico fixo e distâncias focais iguais.
+
 Na seleção de campo de `src/test.py`, use `C` para marcar a linha central,
 incluindo seus encontros com as linhas superior e inferior. Ao confirmar, os
 cantos compartilhados são obtidos pela média dos extremos marcados nas linhas
