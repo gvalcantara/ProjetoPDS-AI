@@ -94,6 +94,57 @@ print("CUDA disponível:", torch.cuda.is_available())
 
 ## Ferramentas
 
+### Projeção de jogadores no campo
+
+`src/tools/field_projection.py` detecta jogadores em um frame e mostra a imagem
+junto ao campo normalizado de -1 a 1 em ambos os eixos. Use um YAML gerado pela
+seleção de campo de `src/test.py`, com linhas `top`, `bottom`, `left` e `right`:
+
+```bash
+python src/tools/field_projection.py \
+    --video SoccerTrackv2/mot/clips/132877.mp4 \
+    --field SoccerTrackv2/mot/field/132877.yaml \
+    --model weights/best.pt --frame 60 --cameramodel fisheye
+```
+
+O frame é numerado a partir de 1. Os pontos do YAML devem pertencer ao mesmo
+frame (ou a uma câmera fixa), com as mesmas dimensões do vídeo. O modelo deve
+ter uma classe chamada `player` ou `person`; use `--class-id` para especificar
+outra classe. `--conf` define o limiar de confiança (padrão 0,25).
+
+Na seleção de campo de `src/test.py`, use `C` para marcar a linha central,
+incluindo seus encontros com as linhas superior e inferior. Ao confirmar, os
+cantos compartilhados são obtidos pela média dos extremos marcados nas linhas
+adjacentes, e os extremos da linha central são inseridos nas linhas superior e
+inferior. Quando o YAML contém `center`, o ajuste também usa essa linha e
+prioriza sua correspondência com `x = 0`. Como os pontos podem não ser
+perfeitamente compatíveis com o modelo de lente, isso pode deslocar os limites
+projetados em relação a `x = ±1`. YAMLs anteriores sem `center` continuam aceitos.
+
+Para adicionar o ponto central a um YAML já marcado, edite o mesmo frame usado
+na marcação original:
+
+```bash
+python src/test.py --video SoccerTrackv2/mot/clips/132877.mp4 \
+    --editfield SoccerTrackv2/mot/field/132877.yaml --frame 60
+```
+
+Pressione `P`, clique no ponto central e pressione Enter para salvar. O campo
+`center_spot: [x, y]` é opcional. Quando presente junto à linha `center`, a
+projeção o associa a `(0, 0)` e mantém as linhas superior e inferior em
+`y = -1` e `y = 1` no modelo ajustado; isto pode alterar as coordenadas laterais.
+
+`--cameramodel` aceita `radial` (padrão, modelo de divisão com um coeficiente)
+ou `fisheye` (modelo equidistante com distância focal ajustada). Ambos fixam
+o centro óptico no centro da imagem e aplicam uma homografia após a correção.
+O fisheye é uma aproximação, não uma calibração completa de lente; suas
+projeções exigem ângulos inferiores a 90 graus em relação ao eixo óptico.
+A saída inclui o erro RMS de cada linha e avisa
+se o ajuste atinge o limite do modelo. Isso não garante precisão: valide com
+marcações internas conhecidas e considere calibrar a lente se o ajuste for ruim.
+Uma linha com apenas dois pontos não informa sua curvatura. Pontos projetados
+fora do campo são exibidos sem limitar as coordenadas.
+
 ### YOLO Video Detection
 
 Ferramenta de linha de comando para executar modelos YOLO sobre vídeos, desenhando bounding boxes nas detecções e salvando o resultado.
