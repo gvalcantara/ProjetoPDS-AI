@@ -173,7 +173,11 @@ python src/test.py --video caminho/video.mp4 --weights weights/best.pt \
 ```
 
 O resultado `<nome>_field.mp4` mostra o vídeo e o campo lado a lado. Os números
-associam detecções às posições em cada frame; não são identidades rastreadas.
+são IDs de rastreamento, que podem mudar após oclusões. Por padrão é usado o
+FastTracker; use `--tracker bytetrack.yaml` para comparar com o ByteTrack ou
+informe outro YAML de rastreador suportado pelo Ultralytics. Para preservar os
+dois vídeos, use diretórios `--output` diferentes. As posições exibidas vêm das
+caixas retornadas pelo rastreador, e podem desaparecer durante uma oclusão.
 Detecções projetadas fora do campo são identificadas como `outside`. Os parâmetros
 da lente e a homografia são lidos do YAML de câmera. Arquivos de câmera antigos
 sem homografia precisam ser gerados novamente com `field_projection.py`.

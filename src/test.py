@@ -1,4 +1,4 @@
-"""Run player detection and render a field projection beside the video."""
+"""Track players and render a field projection beside the video."""
 
 import argparse
 from pathlib import Path
@@ -13,7 +13,7 @@ from tools.field_projection import load_camera_parameters, project_points
 PLAYER_COLOR = (0, 255, 255)  # Yellow in OpenCV's BGR format.
 
 
-def render_field(height, positions):
+def render_field(height, positions, track_ids):
     width = max(320, int(height * 1.2))
     panel = np.full((height, width, 3), (42, 105, 50), dtype=np.uint8)
     margin = max(20, min(height, width) // 12)
@@ -22,13 +22,13 @@ def render_field(height, positions):
     mid_x = (left + right) // 2
     cv2.line(panel, (mid_x, top), (mid_x, bottom), (255, 255, 255), 2)
     cv2.circle(panel, (mid_x, (top + bottom) // 2), max(5, int((right - left) * .09)), (255, 255, 255), 2)
-    for index, (x, y) in enumerate(positions, 1):
+    for track_id, (x, y) in zip(track_ids, positions):
         if not (-1 <= x <= 1 and -1 <= y <= 1):
             continue
         px = int(left + (x + 1) * (right - left) / 2)
         py = int(top + (y + 1) * (bottom - top) / 2)
         cv2.circle(panel, (px, py), 7, PLAYER_COLOR, -1)
-        cv2.putText(panel, str(index), (px + 8, py - 5), cv2.FONT_HERSHEY_SIMPLEX, .5, PLAYER_COLOR, 1, cv2.LINE_AA)
+        cv2.putText(panel, str(track_id), (px + 8, py - 5), cv2.FONT_HERSHEY_SIMPLEX, .5, PLAYER_COLOR, 1, cv2.LINE_AA)
     return panel
 
 
@@ -51,9 +51,12 @@ def main():
     parser.add_argument("--camera-params", type=Path, required=True, help="Camera parameters YAML")
     parser.add_argument("--output", type=Path, default=Path("yolo_testes"), help="Output directory")
     parser.add_argument("--show", action="store_true", help="Display video; press q to stop")
-    parser.add_argument("--conf", type=float, default=0.25)
+    parser.add_argument("--conf", type=float, default=0.1,
+                        help="Detector confidence threshold (default: 0.1, to allow ByteTrack low-score matching)")
     parser.add_argument("--imgsz", type=int, default=640)
     parser.add_argument("--class-id", type=int)
+    parser.add_argument("--tracker", default="fasttrack.yaml",
+                        help="Ultralytics tracker YAML (default: fasttrack.yaml; use bytetrack.yaml to compare)")
     args = parser.parse_args()
 
     capture = cv2.VideoCapture(str(args.video))
@@ -81,27 +84,35 @@ def main():
                                  (width + panel_width, height))
         if not writer.isOpened():
             raise RuntimeError(f"Could not create output video: {output_path}")
+        if args.show:
+            cv2.namedWindow("Players and field", cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)
+            cv2.resizeWindow("Players and field", 960, 540)
         frame_count = 0
         outside_count = 0
         while True:
             ok, frame = capture.read()
             if not ok:
                 break
-            result = model.predict(frame, classes=classes, conf=args.conf, imgsz=args.imgsz,
-                                   device=device, verbose=False)[0]
-            boxes = result.boxes.xyxy.cpu().numpy().reshape(-1, 4)
+            result = model.track(frame, classes=classes, conf=args.conf, imgsz=args.imgsz,
+                                 device=device, tracker=args.tracker, persist=True, verbose=False)[0]
+            if result.boxes.id is None:
+                boxes = np.empty((0, 4))
+                track_ids = np.empty(0, dtype=int)
+            else:
+                boxes = result.boxes.xyxy.cpu().numpy().reshape(-1, 4)
+                track_ids = result.boxes.id.int().cpu().numpy()
             feet = np.column_stack(((boxes[:, 0] + boxes[:, 2]) / 2, boxes[:, 3]))
             positions = project_points(feet, center, scale, parameter, homography, camera_model)
-            for index, (box, position) in enumerate(zip(boxes, positions), 1):
+            for track_id, box, position in zip(track_ids, boxes, positions):
                 color = PLAYER_COLOR
                 x1, y1, x2, y2 = np.rint(box).astype(int)
                 cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
                 outside = np.any(np.abs(position) > 1)
                 outside_count += int(outside)
-                cv2.putText(frame, f"{index}{' outside' if outside else ''}", (x1, max(20, y1 - 5)),
+                cv2.putText(frame, f"{track_id}{' outside' if outside else ''}", (x1, max(20, y1 - 5)),
                             cv2.FONT_HERSHEY_SIMPLEX, .65, color, 2, cv2.LINE_AA)
                 cv2.circle(frame, ((x1 + x2) // 2, y2), 4, color, -1)
-            combined = np.hstack((frame, render_field(height, positions)))
+            combined = np.hstack((frame, render_field(height, positions, track_ids)))
             writer.write(combined)
             frame_count += 1
             if args.show:
