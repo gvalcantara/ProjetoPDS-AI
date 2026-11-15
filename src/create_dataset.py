@@ -82,8 +82,21 @@ def create_dataset(mot_root, output, splits=DEFAULT_SPLITS, interval=36, frame_b
                                 raise ValueError(f"{match}: invalid box at frame {index}: {(x, y, w, h)}")
                             rows.append(f"0 {(x + w / 2) / width:.6f} {(y + h / 2) / height:.6f} {w / width:.6f} {h / height:.6f}\n")
                         name = f"{match}_frame_{index:06d}"
-                        if not cv2.imwrite(str(images / f"{name}.jpg"), frame):
-                            raise OSError(f"Failed to write image for {match}, frame {index}")
+                        # OpenCV's imwrite can suppress filesystem errors (for example,
+                        # a full Drive quota). Encode first and let Python report the
+                        # underlying write error with the destination path.
+                        encoded, jpeg = cv2.imencode(".jpg", frame)
+                        if not encoded:
+                            raise OSError(f"Failed to encode image for {match}, frame {index}")
+                        image_path = images / f"{name}.jpg"
+                        try:
+                            image_path.write_bytes(jpeg.tobytes())
+                        except OSError as error:
+                            raise OSError(
+                                error.errno,
+                                f"Failed to write {image_path}: {error.strerror or error}. "
+                                "Check available disk space, Drive quota, and write permissions.",
+                            ) from error
                         (labels / f"{name}.txt").write_text("".join(rows), encoding="utf-8")
                         saved += 1
                         boxes += len(rows)
