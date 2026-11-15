@@ -240,6 +240,44 @@ As marcações pressupõem câmera fixa durante o vídeo, e os parâmetros devem
 sido calculados para a resolução do vídeo. O modelo fisheye suportado é o
 modelo equidistante simplificado com coeficientes adicionais nulos.
 
+### Comparação com ground truth GSR
+
+A comparação usa as caixas na imagem de jogadores e goleiros do JSON GSR:
+
+```bash
+python tools/process_video.py --video caminho/video.mp4 --weights caminho/pesos.pt \
+    --camera-params caminho/camera.yaml --gt caminho/partida_gsr.json \
+    --gt-frame-offset 0 --gt-iou 0.5 --output runs/inference
+```
+
+O deslocamento é **obrigatório** e deve ser confirmado a partir da origem do
+vídeo: o quadro 1 do vídeo corresponde ao quadro `1 + offset` do GSR. Use `0`
+somente se ambos começam no mesmo quadro; para um recorte que começa no quadro
+GSR 1001, use `1000`. Nome de arquivo igual não garante alinhamento. O vídeo
+deve ter a mesma resolução e FPS das imagens de referência, e o intervalo deve
+existir integralmente no JSON. Vídeos cortados ou redimensionados requerem
+alinhamento e transformação apropriados antes da comparação.
+
+O JSON é lido incrementalmente com `ijson`, uma vez por execução, e somente as
+anotações do intervalo selecionado são indexadas em um arquivo SQLite temporário,
+removido ao final. Arquivos grandes ainda podem demorar para percorrer e exigem
+espaço temporário em disco. A exportação de trajetórias só ocupa memória quando
+`--trajectories` é solicitado.
+
+O relatório `<video>_gt.json` contém quadros avaliados e não rotulados,
+correspondências, falsos positivos e negativos, precisão, revocação, IoU médio,
+trocas de ID e MOTA aproximado. `--gt-report` altera o caminho do relatório.
+A associação em cada quadro usa o algoritmo húngaro e o limiar de IoU escolhido;
+quadros sem `has_labeled_person` são ignorados. Uma troca é contada quando um
+jogador de referência volta a ser associado a outro ID, inclusive após lacunas.
+O MOTA apresentado usa essa regra e não é uma implementação oficial de benchmark:
+não preserva associações anteriores antes do casamento nem aplica regiões de
+ignoração, filtros de visibilidade ou a associação global de métricas como IDF1.
+Outros objetos, como árbitros, não entram no GT de jogadores e podem ser contados
+como falsos positivos. A comparação é feita em pixels da imagem e não mede o
+erro de posição no campo. Resultados após interrupção com `q` cobrem somente os
+quadros processados; métricas sem denominador são `null`.
+
 ## Dataset
 
 O projeto utiliza o dataset [SoccerTrack v2](https://atomscott.github.io/SoccerTrack-v2/), desenvolvido para tarefas de reconstrução do estado de jogo (Game State Reconstruction).
