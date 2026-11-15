@@ -278,3 +278,31 @@ As principais bibliotecas utilizadas são:
 ## Licença
 
 Projeto desenvolvido para fins acadêmicos no contexto da disciplina Projeto Nível I em Computação e Processamento de Sinais I.
+
+### Geração do dataset YOLO
+
+O gerador utiliza os clipes MOT e cria `images/{train,val,test}`,
+`labels/{train,val,test}`, `dataset.yaml` e `report.json`. A divisão padrão é
+por partida: os seis vídeos de treinamento oficiais para treino, os dois de
+challenge para validação e os dois de teste para teste. Isso evita dividir
+frames da mesma partida entre conjuntos. São necessárias as anotações e os dez
+vídeos; o gerador interrompe a execução se algum arquivo estiver ausente.
+
+```bash
+python src/create_dataset.py --mot-root SoccerTrackv2/mot --output data/dataset --interval 36
+```
+
+`--interval 36` seleciona um frame a cada 36, começando no índice zero. A
+saída deve ser uma pasta inexistente ou vazia; escolha outra pasta após uma
+execução interrompida ou remova manualmente os arquivos gerados antes de
+recomeçar. O YAML contém o caminho absoluto da saída e deve ser atualizado se
+o dataset for movido. O relatório registra as partidas, bases dos índices e
+quantidades geradas. Para uma divisão diferente, passe `--splits arquivo.json`,
+com listas não vazias de IDs nas chaves `train`, `val` e `test`.
+
+A cópia local documentada em `SoccerTrackv2/mot/README.md` usa frames iniciados
+em zero em todas as partidas. O arquivo original dos organizadores para 118578
+começa em um: ao usá-lo sem normalização, acrescente `--one-based 118578`.
+A base não é inferida automaticamente. No Colab, clone o repositório e ajuste
+os caminhos e `FRAME_BASES` no notebook de geração. O notebook de treinamento
+deve apontar `DATASET` para a mesma pasta de saída.
