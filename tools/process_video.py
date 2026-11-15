@@ -40,7 +40,7 @@ def main():
     parser.add_argument("--video", type=Path, required=True)
     parser.add_argument("--weights", type=Path, required=True)
     parser.add_argument("--camera-params", type=Path, required=True, help="Camera parameters YAML")
-    parser.add_argument("--output", type=Path, default=Path("yolo_testes"), help="Output directory")
+    parser.add_argument("--output", type=Path, default=Path("runs/inference"), help="Output directory")
     parser.add_argument("--show", action="store_true", help="Display video; press q to stop")
     parser.add_argument("--conf", type=float, default=0.1,
                         help="Detector confidence threshold (default: 0.1, to allow ByteTrack low-score matching)")
