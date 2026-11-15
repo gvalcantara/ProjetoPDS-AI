@@ -25,8 +25,11 @@ O desenvolvimento é organizado em diferentes etapas:
 ├── runs/                   # Resultados de treinamento e experimentos
 │
 ├── src/
-│   └── tools/              # Ferramentas auxiliares
-│       └── yolo_video.py   # Inferência YOLO em vídeos
+│   ├── create_dataset.py   # Geração do dataset YOLO a partir do MOT
+│   ├── process_video.py    # Rastreamento e projeção em vídeo
+│   └── tools/
+│       ├── annotate_field.py    # Marcação das linhas do campo
+│       └── field_projection.py  # Ajuste da câmera e projeção
 │
 ├── tests/                  # Testes automatizados
 │
@@ -167,18 +170,19 @@ Acrescente `--edit` para carregar e editar um YAML existente. Primeiro gere o
 YAML de câmera usando `field_projection.py` e `--camera-params`. Depois execute:
 
 ```bash
-python src/test.py --video caminho/video.mp4 --weights weights/best.pt \
+python src/process_video.py --video caminho/video.mp4 --weights weights/best.pt \
     --camera-params caminho/camera.yaml \
     --output runs/inference
 ```
 
 O resultado `<nome>_field.mp4` mostra o vídeo e o campo lado a lado. Os números
 são IDs de rastreamento, que podem mudar após oclusões. Por padrão é usado o
-FastTracker; use `--tracker bytetrack.yaml` para comparar com o ByteTrack ou
+FastTracker (`fasttrack.yaml`); use `--tracker bytetrack.yaml` para comparar com o ByteTrack ou
 informe outro YAML de rastreador suportado pelo Ultralytics. Para preservar os
-dois vídeos, use diretórios `--output` diferentes. As posições exibidas vêm das
-caixas retornadas pelo rastreador, e podem desaparecer durante uma oclusão.
-Detecções projetadas fora do campo são identificadas como `outside`. Os parâmetros
+dois vídeos, use diretórios `--output` diferentes. O ponto projetado é o centro da borda inferior de cada caixa, como aproximação dos pés.
+As posições exibidas vêm das caixas retornadas pelo rastreador, e podem desaparecer durante uma oclusão.
+Detecções projetadas fora do campo são identificadas como `outside`. O limiar
+padrão de detecção é `--conf 0.1`; `--show` exibe o processamento (pressione `q` para parar). Os parâmetros
 da lente e a homografia são lidos do YAML de câmera. Arquivos de câmera antigos
 sem homografia precisam ser gerados novamente com `field_projection.py`.
 As marcações pressupõem câmera fixa durante o vídeo, e os parâmetros devem ter
@@ -198,6 +202,35 @@ O dataset contém informações relacionadas às partidas de futebol, incluindo:
 - Dados necessários para reconstrução espacial do campo.
 
 A organização dos dados deve preservar a estrutura original do dataset sempre que possível.
+
+### Geração do dataset YOLO
+
+O gerador utiliza os clipes MOT e cria `images/{train,val,test}`,
+`labels/{train,val,test}`, `dataset.yaml` e `report.json`. A divisão padrão é
+por partida: os seis vídeos de treinamento oficiais para treino, os dois de
+challenge para validação e os dois de teste para teste. Isso evita dividir
+frames da mesma partida entre conjuntos. São necessárias as anotações e os dez
+vídeos; o gerador interrompe a execução se algum arquivo estiver ausente.
+
+```bash
+python src/create_dataset.py --mot-root SoccerTrackv2/mot --output data/dataset --interval 36
+```
+
+No notebook de geração, `FRAME_INTERVAL` está configurado como 10; ajuste-o
+conforme a amostragem desejada. No comando acima, `--interval 36` seleciona um frame a cada 36, começando no índice zero. A
+saída deve ser uma pasta inexistente ou vazia; escolha outra pasta após uma
+execução interrompida ou remova manualmente os arquivos gerados antes de
+recomeçar. O YAML contém o caminho absoluto da saída e deve ser atualizado se
+o dataset for movido. O relatório registra as partidas, bases dos índices e
+quantidades geradas. Para uma divisão diferente, passe `--splits arquivo.json`,
+com listas não vazias de IDs nas chaves `train`, `val` e `test`.
+
+A cópia local documentada em `SoccerTrackv2/mot/README.md` usa frames iniciados
+em zero em todas as partidas. O arquivo original dos organizadores para 118578
+começa em um: ao usá-lo sem normalização, acrescente `--one-based 118578`.
+A base não é inferida automaticamente. No Colab, clone o repositório e ajuste
+os caminhos e `FRAME_BASES` no notebook de geração. O notebook de treinamento
+deve apontar `DATASET` para a mesma pasta de saída.
 
 ## Desenvolvimento e experimentos
 
@@ -239,7 +272,9 @@ Os pesos dos modelos utilizados na inferência devem ser armazenados em `weights
 
 ## Testes
 
-Os testes automatizados são desenvolvidos utilizando `pytest`.
+Os testes automatizados são desenvolvidos utilizando `pytest`. O teste de geração
+do dataset versionado na branch cobre a amostragem, os índices de frame, os
+rótulos YOLO e a rejeição de divisões duplicadas e caixas inválidas.
 
 Para executar todos os testes:
 
@@ -278,31 +313,3 @@ As principais bibliotecas utilizadas são:
 ## Licença
 
 Projeto desenvolvido para fins acadêmicos no contexto da disciplina Projeto Nível I em Computação e Processamento de Sinais I.
-
-### Geração do dataset YOLO
-
-O gerador utiliza os clipes MOT e cria `images/{train,val,test}`,
-`labels/{train,val,test}`, `dataset.yaml` e `report.json`. A divisão padrão é
-por partida: os seis vídeos de treinamento oficiais para treino, os dois de
-challenge para validação e os dois de teste para teste. Isso evita dividir
-frames da mesma partida entre conjuntos. São necessárias as anotações e os dez
-vídeos; o gerador interrompe a execução se algum arquivo estiver ausente.
-
-```bash
-python src/create_dataset.py --mot-root SoccerTrackv2/mot --output data/dataset --interval 36
-```
-
-`--interval 36` seleciona um frame a cada 36, começando no índice zero. A
-saída deve ser uma pasta inexistente ou vazia; escolha outra pasta após uma
-execução interrompida ou remova manualmente os arquivos gerados antes de
-recomeçar. O YAML contém o caminho absoluto da saída e deve ser atualizado se
-o dataset for movido. O relatório registra as partidas, bases dos índices e
-quantidades geradas. Para uma divisão diferente, passe `--splits arquivo.json`,
-com listas não vazias de IDs nas chaves `train`, `val` e `test`.
-
-A cópia local documentada em `SoccerTrackv2/mot/README.md` usa frames iniciados
-em zero em todas as partidas. O arquivo original dos organizadores para 118578
-começa em um: ao usá-lo sem normalização, acrescente `--one-based 118578`.
-A base não é inferida automaticamente. No Colab, clone o repositório e ajuste
-os caminhos e `FRAME_BASES` no notebook de geração. O notebook de treinamento
-deve apontar `DATASET` para a mesma pasta de saída.
