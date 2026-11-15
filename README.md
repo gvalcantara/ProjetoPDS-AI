@@ -27,6 +27,11 @@ O desenvolvimento é organizado em diferentes etapas:
 ├── src/                    # Componentes reutilizáveis da aplicação
 │   ├── video.py            # Leitura de vídeo
 │   ├── calibration.py      # Calibração e marcações do campo
+│   ├── detection.py        # Detecção de jogadores
+│   ├── tracking.py         # Associação de detecções
+│   ├── projection.py       # Projeção no campo
+│   ├── trajectory.py       # Construção de trajetórias
+│   ├── models.py           # Dados compartilhados entre etapas
 │   └── field_geometry.py   # Geometria e parâmetros da câmera
 ├── tools/                  # Scripts executáveis
 │   ├── create_dataset.py   # Geração do dataset YOLO
@@ -216,10 +221,15 @@ python tools/process_video.py --video caminho/video.mp4 --weights weights/best.p
     --output runs/inference
 ```
 
+Acrescente `--trajectories caminho/trajetorias.json` para salvar as trajetórias
+construídas em JSON. Cada posição contém o instante em segundos e coordenadas
+normalizadas; pontos fora dos limites permanecem nos dados. Os instantes são
+calculados a partir do número do quadro e do FPS informado pelo vídeo.
+
 O resultado `<nome>_field.mp4` mostra o vídeo e o campo lado a lado. Os números
 são IDs de rastreamento, que podem mudar após oclusões. Por padrão é usado o
-FastTracker (`fasttrack.yaml`); use `--tracker bytetrack.yaml` para comparar com o ByteTrack ou
-informe outro YAML de rastreador suportado pelo Ultralytics. Para preservar os
+FastTracker (`fasttrack.yaml`); use `--tracker bytetrack.yaml` para comparar com o ByteTrack.
+Também é possível informar um YAML próprio para um desses dois tipos de rastreador. Para preservar os
 dois vídeos, use diretórios `--output` diferentes. O ponto projetado é o centro da borda inferior de cada caixa, como aproximação dos pés.
 As posições exibidas vêm das caixas retornadas pelo rastreador, e podem desaparecer durante uma oclusão.
 Detecções projetadas fora do campo são identificadas como `outside`. O limiar
