@@ -14,10 +14,11 @@ mplsoccer>=1.4.0,<2.0
 pandas>=2.2,<3.0
 
 # Machine learning / tracking
+lap>=0.5.12
 scikit-learn>=1.5,<2.0
 torch>=2.5,<3.0
 torchvision>=0.20,<1.0
-ultralytics>=8.3,<9.0
+ultralytics>=8.4.211,<9.0
 
 # Video
 moviepy==1.0.3
@@ -29,6 +30,7 @@ huggingface-hub>=0.25,<1.0
 loguru>=0.7,<1.0
 tqdm>=4.66,<5.0
 python-dotenv>=1.0,<2.0
+PyYAML>=6.0,<7.0
 
 # Development
 jupyter>=1.1,<2.0

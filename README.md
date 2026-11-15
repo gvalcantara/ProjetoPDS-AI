@@ -25,8 +25,11 @@ O desenvolvimento é organizado em diferentes etapas:
 ├── runs/                   # Resultados de treinamento e experimentos
 │
 ├── src/
-│   └── tools/              # Ferramentas auxiliares
-│       └── yolo_video.py   # Inferência YOLO em vídeos
+│   ├── create_dataset.py   # Geração do dataset YOLO a partir do MOT
+│   ├── process_video.py    # Rastreamento e projeção em vídeo
+│   └── tools/
+│       ├── annotate_field.py    # Marcação das linhas do campo
+│       └── field_projection.py  # Ajuste da câmera e projeção
 │
 ├── tests/                  # Testes automatizados
 │
@@ -94,60 +97,97 @@ print("CUDA disponível:", torch.cuda.is_available())
 
 ## Ferramentas
 
-### YOLO Video Detection
+### Projeção de jogadores no campo
 
-Ferramenta de linha de comando para executar modelos YOLO sobre vídeos, desenhando bounding boxes nas detecções e salvando o resultado.
-
-**Localização:** `src/tools/yolo_video.py`
-
-#### Utilização
+`src/tools/field_projection.py` detecta jogadores em um frame e mostra a imagem
+junto ao campo normalizado de -1 a 1 em ambos os eixos. Use um YAML gerado pela
+seleção de campo de `src/tools/annotate_field.py`, com linhas `top`, `bottom`, `left` e `right`:
 
 ```bash
-python src/tools/yolo_video.py \
-    --weights weights/best.pt \
-    --video data/video.mp4
+python src/tools/field_projection.py \
+    --video SoccerTrackv2/mot/clips/132877.mp4 \
+    --field SoccerTrackv2/mot/field/132877.yaml \
+    --model weights/best.pt --frame 60 --camera-model fisheye
 ```
 
-#### Parâmetros
+O frame é numerado a partir de 1. Os pontos do YAML devem pertencer ao mesmo
+frame (ou a uma câmera fixa), com as mesmas dimensões do vídeo. O modelo deve
+ter uma classe chamada `player` ou `person`; use `--class-id` para especificar
+outra classe. `--conf` define o limiar de confiança (padrão 0,25).
 
-| Parâmetro | Obrigatório | Padrão | Descrição |
-|---|---|---|---|
-| `--weights` | Sim | — | Caminho para os pesos do modelo YOLO. |
-| `--video` | Sim | — | Caminho para o vídeo de entrada. |
-| `--show` | Não | `False` | Exibe o vídeo durante a inferência. |
-| `--conf` | Não | `0.25` | Confiança mínima das detecções. |
-| `--imgsz` | Não | `640` | Resolução de entrada da rede. |
-| `--output` | Não | `yolo_testes` | Diretório para salvar os resultados. |
+Acrescente `--camera-params caminho/camera.yaml` para salvar os parâmetros
+da lente, os coeficientes de distorção e a homografia. O arquivo é sobrescrito se já
+existir. O argumento é de saída: cada execução ainda estima os parâmetros a
+partir das marcações. No modelo radial, `division_k1` é o coeficiente do modelo
+de divisão usado pelo script, não um coeficiente radial OpenCV. No fisheye,
+o modelo equidistante estima a distância focal, mas fixa os quatro coeficientes
+adicionais em zero; eles não são estimados a partir das marcações. A matriz da
+câmera é calculada com centro óptico fixo e distâncias focais iguais.
 
-#### Exemplos
+Na seleção de campo de `src/tools/annotate_field.py`, use `C` para marcar a linha central,
+incluindo seus encontros com as linhas superior e inferior. Ao confirmar, os
+cantos compartilhados são obtidos pela média dos extremos marcados nas linhas
+adjacentes, e os extremos da linha central são inseridos nas linhas superior e
+inferior. Quando o YAML contém `center`, o ajuste também usa essa linha e
+prioriza sua correspondência com `x = 0`. Como os pontos podem não ser
+perfeitamente compatíveis com o modelo de lente, isso pode deslocar os limites
+projetados em relação a `x = ±1`. YAMLs anteriores sem `center` continuam aceitos.
 
-**Exibir o vídeo durante a inferência:**
+Para adicionar o ponto central a um YAML já marcado, edite o mesmo frame usado
+na marcação original:
 
 ```bash
-python src/tools/yolo_video.py \
-    --weights weights/best.pt \
-    --video data/video.mp4 \
-    --show
+python src/tools/annotate_field.py --video SoccerTrackv2/mot/clips/132877.mp4 \
+    --output SoccerTrackv2/mot/field/132877.yaml --frame 60 --edit
 ```
 
-**Alterar o limiar de confiança e a resolução:**
+Pressione `P`, clique no ponto central e pressione Enter para salvar. O campo
+`center_spot: [x, y]` é opcional. Quando presente junto à linha `center`, a
+projeção o associa a `(0, 0)` e mantém as linhas superior e inferior em
+`y = -1` e `y = 1` no modelo ajustado; isto pode alterar as coordenadas laterais.
+
+`--camera-model` aceita `radial` (padrão, modelo de divisão com um coeficiente)
+ou `fisheye` (modelo equidistante com distância focal ajustada). Ambos fixam
+o centro óptico no centro da imagem e aplicam uma homografia após a correção.
+O fisheye é uma aproximação, não uma calibração completa de lente; suas
+projeções exigem ângulos inferiores a 90 graus em relação ao eixo óptico.
+A saída inclui o erro RMS de cada linha e avisa
+se o ajuste atinge o limite do modelo. Isso não garante precisão: valide com
+marcações internas conhecidas e considere calibrar a lente se o ajuste for ruim.
+Uma linha com apenas dois pontos não informa sua curvatura. Pontos projetados
+fora do campo são exibidos sem limitar as coordenadas.
+
+### Vídeo com jogadores projetados
+
+Para criar ou editar a marcação sem executar o modelo:
 
 ```bash
-python src/tools/yolo_video.py \
-    --weights weights/best.pt \
-    --video data/video.mp4 \
-    --conf 0.4 \
-    --imgsz 1280
+python src/tools/annotate_field.py --video caminho/video.mp4 \
+    --output caminho/campo.yaml --frame 60
 ```
 
-**Definir diretório de saída:**
+Acrescente `--edit` para carregar e editar um YAML existente. Primeiro gere o
+YAML de câmera usando `field_projection.py` e `--camera-params`. Depois execute:
 
 ```bash
-python src/tools/yolo_video.py \
-    --weights weights/best.pt \
-    --video data/video.mp4 \
+python src/process_video.py --video caminho/video.mp4 --weights weights/best.pt \
+    --camera-params caminho/camera.yaml \
     --output runs/inference
 ```
+
+O resultado `<nome>_field.mp4` mostra o vídeo e o campo lado a lado. Os números
+são IDs de rastreamento, que podem mudar após oclusões. Por padrão é usado o
+FastTracker (`fasttrack.yaml`); use `--tracker bytetrack.yaml` para comparar com o ByteTrack ou
+informe outro YAML de rastreador suportado pelo Ultralytics. Para preservar os
+dois vídeos, use diretórios `--output` diferentes. O ponto projetado é o centro da borda inferior de cada caixa, como aproximação dos pés.
+As posições exibidas vêm das caixas retornadas pelo rastreador, e podem desaparecer durante uma oclusão.
+Detecções projetadas fora do campo são identificadas como `outside`. O limiar
+padrão de detecção é `--conf 0.1`; `--show` exibe o processamento (pressione `q` para parar). Os parâmetros
+da lente e a homografia são lidos do YAML de câmera. Arquivos de câmera antigos
+sem homografia precisam ser gerados novamente com `field_projection.py`.
+As marcações pressupõem câmera fixa durante o vídeo, e os parâmetros devem ter
+sido calculados para a resolução do vídeo. O modelo fisheye suportado é o
+modelo equidistante simplificado com coeficientes adicionais nulos.
 
 ## Dataset
 
@@ -163,7 +203,59 @@ O dataset contém informações relacionadas às partidas de futebol, incluindo:
 
 A organização dos dados deve preservar a estrutura original do dataset sempre que possível.
 
+### Geração do dataset YOLO
+
+O gerador utiliza os clipes MOT e cria `images/{train,val,test}`,
+`labels/{train,val,test}`, `dataset.yaml` e `report.json`. A divisão padrão é
+por partida: os seis vídeos de treinamento oficiais para treino, os dois de
+challenge para validação e os dois de teste para teste. Isso evita dividir
+frames da mesma partida entre conjuntos. São necessárias as anotações e os dez
+vídeos; o gerador interrompe a execução se algum arquivo estiver ausente.
+
+```bash
+python src/create_dataset.py --mot-root SoccerTrackv2/mot --output data/dataset --interval 36
+```
+
+No notebook de geração, `FRAME_INTERVAL` está configurado como 10; ajuste-o
+conforme a amostragem desejada. No comando acima, `--interval 36` seleciona um frame a cada 36, começando no índice zero. A
+saída deve ser uma pasta inexistente ou vazia; escolha outra pasta após uma
+execução interrompida ou remova manualmente os arquivos gerados antes de
+recomeçar. O YAML contém o caminho absoluto da saída e deve ser atualizado se
+o dataset for movido. O relatório registra as partidas, bases dos índices e
+quantidades geradas. Para uma divisão diferente, passe `--splits arquivo.json`,
+com listas não vazias de IDs nas chaves `train`, `val` e `test`.
+
+A cópia local documentada em `SoccerTrackv2/mot/README.md` usa frames iniciados
+em zero em todas as partidas. O arquivo original dos organizadores para 118578
+começa em um: ao usá-lo sem normalização, acrescente `--one-based 118578`.
+A base não é inferida automaticamente. No Colab, clone o repositório e ajuste
+os caminhos e `FRAME_BASES` no notebook de geração. O notebook de treinamento
+deve apontar `DATASET` para a mesma pasta de saída.
+
 ## Desenvolvimento e experimentos
+
+### Executar notebooks no Google Colab
+
+Abra um notebook diretamente da branch `main` do GitHub:
+
+| Notebook | Abrir no Colab |
+|---|---|
+| Criação do dataset | [Abrir no Colab](https://colab.research.google.com/github/gvalcantara/ProjetoPDS-AI/blob/main/notebooks/00_dataset_creator.ipynb) |
+| Treinamento | [Abrir no Colab](https://colab.research.google.com/github/gvalcantara/ProjetoPDS-AI/blob/main/notebooks/01_train.ipynb) |
+| Teste em vídeo | [Abrir no Colab](https://colab.research.google.com/github/gvalcantara/ProjetoPDS-AI/blob/main/notebooks/02_test.ipynb) |
+
+Os links abrem a versão publicada no GitHub, não alterações locais. Para usar
+outra branch, substitua `main` pelo nome dela na URL. No Colab, selecione uma
+GPU em **Ambiente de execução → Alterar tipo de ambiente de execução** para o
+treinamento e execute as células em ordem. Autorize a montagem do Google Drive
+quando solicitada e ajuste os caminhos dos dados e dos pesos para seu Drive.
+No notebook de teste, os caminhos locais e a pasta de saída também precisam ser
+ajustados para o ambiente Colab; monte o Drive antes de acessá-lo.
+
+O ambiente do Colab é temporário: guarde dados, pesos e resultados no Drive.
+Para preservar alterações feitas no notebook, use **Arquivo → Salvar uma cópia
+no Drive** ou salve uma cópia no GitHub. A abertura do notebook não inicia o
+treinamento automaticamente; ele é executado ao rodar as células.
 
 Os experimentos de aprendizado de máquina são organizados no diretório `runs/`.
 
@@ -180,7 +272,9 @@ Os pesos dos modelos utilizados na inferência devem ser armazenados em `weights
 
 ## Testes
 
-Os testes automatizados são desenvolvidos utilizando `pytest`.
+Os testes automatizados são desenvolvidos utilizando `pytest`. O teste de geração
+do dataset versionado na branch cobre a amostragem, os índices de frame, os
+rótulos YOLO e a rejeição de divisões duplicadas e caixas inválidas.
 
 Para executar todos os testes:
 
