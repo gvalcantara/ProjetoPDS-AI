@@ -2,13 +2,15 @@
 
 import argparse
 from pathlib import Path
+import sys
 
 import cv2
 import numpy as np
 import torch
 from ultralytics import YOLO
 
-from tools.field_projection import load_camera_parameters, project_points
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from src.field_geometry import load_camera_parameters, project_points
 
 PLAYER_COLOR = (0, 255, 255)  # Yellow in OpenCV's BGR format.
 

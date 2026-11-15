@@ -24,12 +24,14 @@ O desenvolvimento é organizado em diferentes etapas:
 ├── weights/                # Pesos dos modelos treinados
 ├── runs/                   # Resultados de treinamento e experimentos
 │
-├── src/
-│   ├── create_dataset.py   # Geração do dataset YOLO a partir do MOT
+├── src/                    # Componentes reutilizáveis da aplicação
+│   ├── video.py            # Leitura de vídeo
+│   ├── calibration.py      # Calibração e marcações do campo
+│   └── field_geometry.py   # Geometria e parâmetros da câmera
+├── tools/                  # Scripts executáveis
+│   ├── create_dataset.py   # Geração do dataset YOLO
 │   ├── process_video.py    # Rastreamento e projeção em vídeo
-│   └── tools/
-│       ├── annotate_field.py    # Marcação das linhas do campo
-│       └── field_projection.py  # Ajuste da câmera e projeção
+│   └── annotate_field.py   # Marcação, calibração e projeção
 │
 ├── tests/                  # Testes automatizados
 │
@@ -97,18 +99,49 @@ print("CUDA disponível:", torch.cuda.is_available())
 
 ## Ferramentas
 
+### Leitura de vídeo e calibração como componentes
+
+O pacote `src` oferece `LeitorVideo`, `CalibradorCampo` e as classes de dados
+`MetadadosVideo` e `CalibracaoCampo`. A partir da raiz do projeto:
+
+```python
+from src import CalibradorCampo, LeitorVideo
+
+with LeitorVideo("partida.mp4") as video:
+    dados = video.metadados()
+    quadro = video.ler_quadro(60)  # Numeração começa em 1.
+    # video.ler_quadros() fornece (número, tempo em segundos, quadro).
+
+calibrador = CalibradorCampo()
+marcacoes = calibrador.carregar_marcacoes("campo.yaml")
+calibracao = calibrador.calibrar(marcacoes, (dados.largura, dados.altura),
+                                 modelo_camera="radial")
+calibracao.salvar("camera.yaml")
+# Para carregar posteriormente, informe a resolução do vídeo:
+calibracao = calibrador.carregar_calibracao("camera.yaml", (dados.largura, dados.altura))
+```
+
+A calibração reutiliza o ajuste geométrico descrito abaixo, incluindo suas
+limitações e a necessidade de marcações apropriadas. `erro_rms` e
+`atingiu_limite` estão disponíveis após o ajuste, mas não são persistidos no
+YAML de câmera existente e retornam `None` ao carregá-lo.
+
 ### Projeção de jogadores no campo
 
-`src/tools/field_projection.py` detecta jogadores em um frame e mostra a imagem
-junto ao campo normalizado de -1 a 1 em ambos os eixos. Use um YAML gerado pela
-seleção de campo de `src/tools/annotate_field.py`, com linhas `top`, `bottom`, `left` e `right`:
+`tools/annotate_field.py` permite marcar o campo, calibrar a câmera e,
+opcionalmente, detectar e projetar jogadores em um quadro. Para usar marcações
+já salvas, sem abrir o editor, e mostrar o resultado:
 
 ```bash
-python src/tools/field_projection.py \
+python tools/annotate_field.py \
     --video SoccerTrackv2/mot/clips/132877.mp4 \
-    --field SoccerTrackv2/mot/field/132877.yaml \
+    --output SoccerTrackv2/mot/field/132877.yaml --use-existing \
     --model weights/best.pt --frame 60 --camera-model fisheye
 ```
+
+Para criar marcações, omita `--use-existing`; para editá-las, use `--edit`.
+Sem `--model`, a detecção e a visualização não são executadas. A calibração
+é executada quando `--model` ou `--camera-params` é informado.
 
 O frame é numerado a partir de 1. Os pontos do YAML devem pertencer ao mesmo
 frame (ou a uma câmera fixa), com as mesmas dimensões do vídeo. O modelo deve
@@ -124,7 +157,7 @@ o modelo equidistante estima a distância focal, mas fixa os quatro coeficientes
 adicionais em zero; eles não são estimados a partir das marcações. A matriz da
 câmera é calculada com centro óptico fixo e distâncias focais iguais.
 
-Na seleção de campo de `src/tools/annotate_field.py`, use `C` para marcar a linha central,
+Na seleção de campo de `tools/annotate_field.py`, use `C` para marcar a linha central,
 incluindo seus encontros com as linhas superior e inferior. Ao confirmar, os
 cantos compartilhados são obtidos pela média dos extremos marcados nas linhas
 adjacentes, e os extremos da linha central são inseridos nas linhas superior e
@@ -137,7 +170,7 @@ Para adicionar o ponto central a um YAML já marcado, edite o mesmo frame usado
 na marcação original:
 
 ```bash
-python src/tools/annotate_field.py --video SoccerTrackv2/mot/clips/132877.mp4 \
+python tools/annotate_field.py --video SoccerTrackv2/mot/clips/132877.mp4 \
     --output SoccerTrackv2/mot/field/132877.yaml --frame 60 --edit
 ```
 
@@ -162,15 +195,23 @@ fora do campo são exibidos sem limitar as coordenadas.
 Para criar ou editar a marcação sem executar o modelo:
 
 ```bash
-python src/tools/annotate_field.py --video caminho/video.mp4 \
+python tools/annotate_field.py --video caminho/video.mp4 \
     --output caminho/campo.yaml --frame 60
 ```
 
-Acrescente `--edit` para carregar e editar um YAML existente. Primeiro gere o
-YAML de câmera usando `field_projection.py` e `--camera-params`. Depois execute:
+Acrescente `--edit` para carregar e editar um YAML existente. Para gerar o
+YAML de câmera a partir de marcações existentes sem executar o detector:
 
 ```bash
-python src/process_video.py --video caminho/video.mp4 --weights weights/best.pt \
+python tools/annotate_field.py --video caminho/video.mp4 \
+    --output caminho/campo.yaml --frame 60 --use-existing \
+    --camera-model radial --camera-params caminho/camera.yaml
+```
+
+Depois execute:
+
+```bash
+python tools/process_video.py --video caminho/video.mp4 --weights weights/best.pt \
     --camera-params caminho/camera.yaml \
     --output runs/inference
 ```
@@ -184,7 +225,7 @@ As posições exibidas vêm das caixas retornadas pelo rastreador, e podem desap
 Detecções projetadas fora do campo são identificadas como `outside`. O limiar
 padrão de detecção é `--conf 0.1`; `--show` exibe o processamento (pressione `q` para parar). Os parâmetros
 da lente e a homografia são lidos do YAML de câmera. Arquivos de câmera antigos
-sem homografia precisam ser gerados novamente com `field_projection.py`.
+sem homografia precisam ser gerados novamente com `annotate_field.py`.
 As marcações pressupõem câmera fixa durante o vídeo, e os parâmetros devem ter
 sido calculados para a resolução do vídeo. O modelo fisheye suportado é o
 modelo equidistante simplificado com coeficientes adicionais nulos.
@@ -213,7 +254,7 @@ frames da mesma partida entre conjuntos. São necessárias as anotações e os d
 vídeos; o gerador interrompe a execução se algum arquivo estiver ausente.
 
 ```bash
-python src/create_dataset.py --mot-root SoccerTrackv2/mot --output data/dataset --interval 36
+python tools/create_dataset.py --mot-root SoccerTrackv2/mot --output data/dataset --interval 36
 ```
 
 No notebook de geração, `FRAME_INTERVAL` está configurado como 10; ajuste-o
