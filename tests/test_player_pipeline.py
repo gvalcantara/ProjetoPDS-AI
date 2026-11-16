@@ -111,7 +111,7 @@ def test_extrator_processes_video_and_resets_tracker(tmp_path, monkeypatch):
             return [Deteccao((10, 20, 30, 50), .9, 0, instant)]
 
     monkeypatch.setattr(pipeline, "DetectorJogadores", Detector)
-    extrator = pipeline.ExtratorTrajetorias("unused.pt", camera, configuracao_rastreador="bytetrack.yaml")
+    extrator = pipeline.ExtratorTrajetorias(camera, configuracao_rastreador="bytetrack.yaml")
     for _ in range(2):
         trajectories = extrator.processar(path)
         assert len(trajectories) == 1

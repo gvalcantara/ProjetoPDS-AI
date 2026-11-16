@@ -22,3 +22,6 @@ dependencies = [
 [tool.setuptools]
 packages = ["hattrick_ai"]
 package-dir = {hattrick_ai = "src"}
+
+[tool.setuptools.package-data]
+hattrick_ai = ["data/*.pt"]

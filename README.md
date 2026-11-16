@@ -120,16 +120,16 @@ O pacote instalado pode ser importado como `hattrick_ai`:
 from hattrick_ai import CalibradorCampo, LeitorVideo
 ```
 
-O wheel não inclui os scripts de `tools/`, datasets ou pesos de modelos.
-Quando necessários, os pesos devem ser fornecidos por um caminho externo.
+O wheel inclui os pesos do modelo `players_n_1280_baseline`, mas não os
+scripts de `tools/` nem datasets.
 Para uso com CUDA, instale a versão adequada do PyTorch para o ambiente.
 
-Para obter as trajetórias de um vídeo com pesos e calibração existentes:
+Para obter as trajetórias de um vídeo com uma calibração existente:
 
 ```python
 from hattrick_ai import ExtratorTrajetorias
 
-extrator = ExtratorTrajetorias("modelo.pt", "camera.yaml")
+extrator = ExtratorTrajetorias("camera.yaml")
 trajetorias = extrator.processar("partida.mp4")
 for trajetoria in trajetorias:
     print(trajetoria.id_rastreamento, trajetoria.posicoes)
