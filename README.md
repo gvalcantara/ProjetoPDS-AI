@@ -124,6 +124,21 @@ O wheel não inclui os scripts de `tools/`, datasets ou pesos de modelos.
 Quando necessários, os pesos devem ser fornecidos por um caminho externo.
 Para uso com CUDA, instale a versão adequada do PyTorch para o ambiente.
 
+Para obter as trajetórias de um vídeo com pesos e calibração existentes:
+
+```python
+from hattrick_ai import ExtratorTrajetorias
+
+extrator = ExtratorTrajetorias("modelo.pt", "camera.yaml")
+trajetorias = extrator.processar("partida.mp4")
+for trajetoria in trajetorias:
+    print(trajetoria.id_rastreamento, trajetoria.posicoes)
+```
+
+Cada posição contém o instante em segundos e as coordenadas normalizadas do
+campo; os limites do campo são -1 e 1. A calibração deve corresponder à
+resolução do vídeo. Um novo rastreador é criado a cada chamada de `processar`.
+
 ### Leitura de vídeo e calibração como componentes
 
 O pacote `src` oferece `LeitorVideo`, `CalibradorCampo` e as classes de dados

@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src import (CalibracaoCampo, ConstrutorTrajetorias, Deteccao, DetectorJogadores,
                  Posicao, ProjetorCampo, RastreadorJogadores, Rastreamento)
 from tools import process_video
+from src import pipeline
 
 
 class FakeBoxes:
@@ -89,6 +90,34 @@ def test_projector_and_trajectory_builder():
     assert [p.instante for p in result[1].posicoes] == [.5, 1]
     result[1].posicoes.clear()
     assert len(builder.finalizar()[1].posicoes) == 2
+
+
+def test_extrator_processes_video_and_resets_tracker(tmp_path, monkeypatch):
+    path = tmp_path / "input.avi"
+    writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"MJPG"), 5, (100, 100))
+    if not writer.isOpened():
+        pytest.skip("MJPG video writer is unavailable")
+    for _ in range(3):
+        writer.write(np.zeros((100, 100, 3), dtype=np.uint8))
+    writer.release()
+    camera = tmp_path / "camera.yaml"
+    calibration().salvar(camera)
+
+    class Detector:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def detectar(self, frame, instant):
+            return [Deteccao((10, 20, 30, 50), .9, 0, instant)]
+
+    monkeypatch.setattr(pipeline, "DetectorJogadores", Detector)
+    extrator = pipeline.ExtratorTrajetorias("unused.pt", camera, configuracao_rastreador="bytetrack.yaml")
+    for _ in range(2):
+        trajectories = extrator.processar(path)
+        assert len(trajectories) == 1
+        assert [p.instante for p in trajectories[0].posicoes] == [0, .2, .4]
+        for posicao in trajectories[0].posicoes:
+            assert (posicao.x, posicao.y) == pytest.approx((-.6, 0))
 
 
 def test_process_video_end_to_end_with_simulated_detector(tmp_path, monkeypatch):
