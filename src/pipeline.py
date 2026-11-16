@@ -27,7 +27,7 @@ class ExtratorTrajetorias:
                                              tamanho_imagem=tamanho_imagem,
                                              classe_id=classe_id, dispositivo=dispositivo)
 
-    def processar(self, caminho_video, ao_processar_quadro=None):
+    def processar(self, caminho_video, ao_processar_quadro=None, fps_processamento=None):
         """Return trajectories ordered by track ID; times are in seconds.
 
         Positions use normalized field coordinates, with field boundaries at
@@ -35,13 +35,20 @@ class ExtratorTrajetorias:
         """
         with LeitorVideo(caminho_video) as video:
             metadata = video.metadados()
+            if fps_processamento is not None and fps_processamento <= 0:
+                raise ValueError("Processing FPS must be positive.")
+            fps_alvo = min(fps_processamento or metadata.fps, metadata.fps)
             calibracao = CalibradorCampo().carregar_calibracao(
                 self.parametros_camera, (metadata.largura, metadata.altura))
             projetor = ProjetorCampo(calibracao)
             rastreador = RastreadorJogadores(self.configuracao_rastreador, dispositivo=self.detector.dispositivo)
             trajetorias = ConstrutorTrajetorias()
             frames = 0
+            proximo_instante = 0.0
             for _, instante, quadro in video.ler_quadros():
+                if instante + 1e-9 < proximo_instante:
+                    continue
+                proximo_instante = (int(instante * fps_alvo + 1e-9) + 1) / fps_alvo
                 deteccoes = self.detector.detectar(quadro, instante)
                 rastreamentos = rastreador.atualizar(deteccoes, quadro, instante)
                 posicoes = projetor.projetar(rastreamentos)

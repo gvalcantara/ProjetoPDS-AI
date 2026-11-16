@@ -142,6 +142,8 @@ def test_extrator_processes_video_and_resets_tracker(tmp_path, monkeypatch):
         assert [p.instante for p in trajectories[0].posicoes] == [0, .2, .4]
         for posicao in trajectories[0].posicoes:
             assert (posicao.x, posicao.y) == pytest.approx((-.6, 0))
+    amostra = extrator.processar(path, fps_processamento=2.5)
+    assert [p.instante for p in amostra[0].posicoes] == [0, .4]
 
 
 def test_process_video_end_to_end_with_simulated_detector(tmp_path, monkeypatch):

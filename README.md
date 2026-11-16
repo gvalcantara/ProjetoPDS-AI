@@ -111,7 +111,7 @@ Para gerar um wheel com os componentes de `src/`:
 ```bash
 python -m pip install build
 python -m build --wheel
-python -m pip install dist/hattrick_ai-0.1.2-py3-none-any.whl
+python -m pip install dist/hattrick_ai-0.1.4-py3-none-any.whl
 ```
 
 O pacote instalado pode ser importado como `hattrick_ai`:
