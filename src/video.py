@@ -58,9 +58,11 @@ class LeitorVideo:
         height = capture.get(cv2.CAP_PROP_FRAME_HEIGHT)
         fps = capture.get(cv2.CAP_PROP_FPS)
         count = capture.get(cv2.CAP_PROP_FRAME_COUNT)
-        if not np.isfinite([width, height, fps, count]).all() or min(width, height, fps) <= 0 or count < 0:
+        if not np.isfinite([width, height, fps]).all() or min(width, height, fps) <= 0:
             raise ValueError("Video metadata is invalid.")
-        return MetadadosVideo(int(width), int(height), float(fps), int(count))
+        # Live-recorded WebM files often have no duration or frame count.
+        total = int(count) if np.isfinite(count) and count > 0 else 0
+        return MetadadosVideo(int(width), int(height), float(fps), total)
 
     def ler_quadro(self, numero):
         if isinstance(numero, bool) or not isinstance(numero, int) or numero < 1:
@@ -80,9 +82,14 @@ class LeitorVideo:
         if not capture.set(cv2.CAP_PROP_POS_FRAMES, 0):
             raise ValueError("Could not seek to the beginning of the video.")
         numero = 1
+        instante_anterior = -1.0
         while True:
             ok, frame = capture.read()
             if not ok:
                 break
-            yield numero, (numero - 1) / fps, frame
+            timestamp = capture.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
+            if not np.isfinite(timestamp) or timestamp < 0 or (numero > 1 and timestamp <= instante_anterior):
+                timestamp = max((numero - 1) / fps, instante_anterior + 1 / fps)
+            yield numero, timestamp, frame
+            instante_anterior = timestamp
             numero += 1

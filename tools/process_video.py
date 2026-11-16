@@ -49,8 +49,8 @@ def main():
                         help="Detector confidence threshold (default: 0.1, to allow ByteTrack low-score matching)")
     parser.add_argument("--imgsz", type=int, default=640)
     parser.add_argument("--class-id", type=int)
-    parser.add_argument("--tracker", default="fasttrack.yaml",
-                        help="Ultralytics tracker YAML (default: fasttrack.yaml; use bytetrack.yaml to compare)")
+    parser.add_argument("--tracker", default="botsort.yaml",
+                        help="Ultralytics tracker YAML (default: botsort.yaml with ReID; use bytetrack.yaml or fasttrack.yaml to compare)")
     parser.add_argument("--trajectories", type=Path, help="Optional JSON output containing normalized trajectories")
     parser.add_argument("--gt", type=Path, help="SoccerTrack GSR ground-truth JSON")
     parser.add_argument("--gt-frame-offset", type=int, help="Zero-based GSR offset: video frame 1 maps to GSR frame 1 + offset")
@@ -97,7 +97,7 @@ def main():
             print(f"Camera: {calibration.modelo_camera}; using homography from {args.camera_params}")
             detector = DetectorJogadores(args.weights, confianca=args.conf, tamanho_imagem=args.imgsz,
                                           classe_id=args.class_id)
-            tracker = RastreadorJogadores(args.tracker)
+            tracker = RastreadorJogadores(args.tracker, dispositivo=detector.dispositivo)
             projector = ProjetorCampo(calibration)
             trajectories = ConstrutorTrajetorias() if args.trajectories else None
             args.output.mkdir(parents=True, exist_ok=True)

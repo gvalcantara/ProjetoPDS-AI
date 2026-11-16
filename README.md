@@ -104,6 +104,41 @@ print("CUDA disponível:", torch.cuda.is_available())
 
 ## Ferramentas
 
+### Instalação como pacote
+
+Para gerar um wheel com os componentes de `src/`:
+
+```bash
+python -m pip install build
+python -m build --wheel
+python -m pip install dist/hattrick_ai-0.1.4-py3-none-any.whl
+```
+
+O pacote instalado pode ser importado como `hattrick_ai`:
+
+```python
+from hattrick_ai import CalibradorCampo, LeitorVideo
+```
+
+O wheel inclui os pesos do modelo `players_n_1280_baseline`, mas não os
+scripts de `tools/` nem datasets.
+Para uso com CUDA, instale a versão adequada do PyTorch para o ambiente.
+
+Para obter as trajetórias de um vídeo com uma calibração existente:
+
+```python
+from hattrick_ai import ExtratorTrajetorias
+
+extrator = ExtratorTrajetorias("camera.yaml")
+trajetorias = extrator.processar("partida.mp4")
+for trajetoria in trajetorias:
+    print(trajetoria.id_rastreamento, trajetoria.posicoes)
+```
+
+Cada posição contém o instante em segundos e as coordenadas normalizadas do
+campo; os limites do campo são -1 e 1. A calibração deve corresponder à
+resolução do vídeo. Um novo rastreador é criado a cada chamada de `processar`.
+
 ### Leitura de vídeo e calibração como componentes
 
 O pacote `src` oferece `LeitorVideo`, `CalibradorCampo` e as classes de dados
@@ -228,8 +263,8 @@ calculados a partir do número do quadro e do FPS informado pelo vídeo.
 
 O resultado `<nome>_field.mp4` mostra o vídeo e o campo lado a lado. Os números
 são IDs de rastreamento, que podem mudar após oclusões. Por padrão é usado o
-FastTracker (`fasttrack.yaml`); use `--tracker bytetrack.yaml` para comparar com o ByteTrack.
-Também é possível informar um YAML próprio para um desses dois tipos de rastreador. Para preservar os
+BoT-SORT com ReID (`botsort.yaml`), usando experimentalmente o próprio modelo de detecção como extrator de características de aparência. Não é um modelo treinado especificamente para reidentificação; a qualidade deve ser avaliada em vídeos reais. Use `--tracker bytetrack.yaml` ou `--tracker fasttrack.yaml` para comparação.
+Também é possível informar um YAML próprio para esses tipos de rastreador. Para preservar os
 dois vídeos, use diretórios `--output` diferentes. O ponto projetado é o centro da borda inferior de cada caixa, como aproximação dos pés.
 As posições exibidas vêm das caixas retornadas pelo rastreador, e podem desaparecer durante uma oclusão.
 Detecções projetadas fora do campo são identificadas como `outside`. O limiar

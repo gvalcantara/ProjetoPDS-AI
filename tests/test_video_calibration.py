@@ -55,6 +55,26 @@ def test_video_reader_missing_file(tmp_path):
         LeitorVideo(tmp_path / "missing.avi").abrir()
 
 
+def test_reader_handles_unknown_frame_count_and_variable_timestamps(monkeypatch):
+    class Capture:
+        def __init__(self, path): self.index = 0
+        def isOpened(self): return True
+        def release(self): pass
+        def set(self, prop, value): self.index = 0; return True
+        def read(self):
+            self.index += 1
+            return (True, np.zeros((2, 2, 3), dtype=np.uint8)) if self.index <= 3 else (False, None)
+        def get(self, prop):
+            values = {cv2.CAP_PROP_FRAME_WIDTH: 2, cv2.CAP_PROP_FRAME_HEIGHT: 2,
+                      cv2.CAP_PROP_FPS: 25, cv2.CAP_PROP_FRAME_COUNT: -100,
+                      cv2.CAP_PROP_POS_MSEC: [0, 0, 171, 243][min(self.index, 3)]}
+            return values[prop]
+    monkeypatch.setattr(cv2, 'VideoCapture', Capture)
+    with LeitorVideo('recording.webm') as reader:
+        assert reader.metadados().total_quadros == 0
+        assert [t for _, t, _ in reader.ler_quadros()] == pytest.approx([0, .171, .243])
+
+
 def test_calibration_and_yaml_roundtrip(tmp_path, markings):
     calibrator = CalibradorCampo()
     markings_path = tmp_path / "field.yaml"

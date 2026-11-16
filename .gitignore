@@ -4,3 +4,6 @@
 /runs
 /weights
 **/__pycache__
+/build/
+/dist/
+/*.egg-info/
