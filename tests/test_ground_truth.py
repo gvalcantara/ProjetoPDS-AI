@@ -81,10 +81,11 @@ def test_process_video_gt_report_and_offset(tmp_path, monkeypatch):
     CalibracaoCampo("radial", (64, 48), np.array([32., 24.]), 40., 0.,
                     np.array([[1/32, 0, -1], [0, 1/24, -1], [0, 0, 1.]])).salvar(camera)
     class Detector:
+        dispositivo = "cpu"
         def __init__(self, *args, **kwargs): pass
         def detectar(self, frame, instant): return [Deteccao((10, 10, 20, 30), .9, 0, instant)]
     class Tracker:
-        def __init__(self, *args): pass
+        def __init__(self, *args, **kwargs): pass
         def atualizar(self, detections, frame, instant): return [Rastreamento(1, detections[0])]
     monkeypatch.setattr(process_video, "DetectorJogadores", Detector)
     monkeypatch.setattr(process_video, "RastreadorJogadores", Tracker)

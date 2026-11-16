@@ -40,6 +40,29 @@ class FakeModel:
         return [SimpleNamespace(boxes=FakeBoxes([[10, 20, 30, 50, .9, 0]]) )]
 
 
+def test_botsort_reid_uses_appearance_embeddings():
+    tracker = RastreadorJogadores(dispositivo="cpu")
+    assert tracker._rastreador.args.with_reid
+    frame = np.full((100, 100, 3), 127, dtype=np.uint8)
+    detections = [Deteccao((10, 10, 30, 50), .9, 0, 0)]
+    first = tracker.atualizar(detections, frame, 0)
+    assert len(first) == 1
+    assert tracker._rastreador.tracked_stracks[0].curr_feat is not None
+    second = tracker.atualizar([Deteccao((11, 10, 31, 50), .9, 0, .1)], frame, .1)
+    assert second[0].id == first[0].id
+
+
+def test_reid_limits_batch_and_preserves_feature_order():
+    from src.tracking import _CodificadorEmLotes
+    calls = []
+    def encoder(image, boxes):
+        calls.append(len(boxes))
+        return [box[0] for box in boxes]
+    result = _CodificadorEmLotes(encoder)(None, np.array([[1], [2], [3]]))
+    assert calls == [1, 1, 1]
+    assert result == [1, 2, 3]
+
+
 def calibration():
     return CalibracaoCampo("radial", (100, 100), np.array([50., 50.]),
                            np.hypot(100, 100) / 2, 0.,
@@ -104,6 +127,7 @@ def test_extrator_processes_video_and_resets_tracker(tmp_path, monkeypatch):
     calibration().salvar(camera)
 
     class Detector:
+        dispositivo = "cpu"
         def __init__(self, *args, **kwargs):
             pass
 
@@ -131,6 +155,7 @@ def test_process_video_end_to_end_with_simulated_detector(tmp_path, monkeypatch)
     cam_path = tmp_path / "camera.yaml"
     calibration().salvar(cam_path)
     class Detector:
+        dispositivo = "cpu"
         def __init__(self, *args, **kwargs):
             pass
         def detectar(self, frame, instant):

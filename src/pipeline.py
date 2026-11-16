@@ -18,7 +18,7 @@ class ExtratorTrajetorias:
     """
 
     def __init__(self, parametros_camera, confianca=0.1, tamanho_imagem=1280,
-                 classe_id=None, dispositivo=None, configuracao_rastreador="fasttrack.yaml"):
+                 classe_id=None, dispositivo=None, configuracao_rastreador="botsort.yaml"):
         self.parametros_camera = parametros_camera
         self.configuracao_rastreador = configuracao_rastreador
         recurso = files(__package__).joinpath("data", "players_n_1280_baseline.pt")
@@ -27,7 +27,7 @@ class ExtratorTrajetorias:
                                              tamanho_imagem=tamanho_imagem,
                                              classe_id=classe_id, dispositivo=dispositivo)
 
-    def processar(self, caminho_video):
+    def processar(self, caminho_video, ao_processar_quadro=None):
         """Return trajectories ordered by track ID; times are in seconds.
 
         Positions use normalized field coordinates, with field boundaries at
@@ -38,13 +38,16 @@ class ExtratorTrajetorias:
             calibracao = CalibradorCampo().carregar_calibracao(
                 self.parametros_camera, (metadata.largura, metadata.altura))
             projetor = ProjetorCampo(calibracao)
-            rastreador = RastreadorJogadores(self.configuracao_rastreador)
+            rastreador = RastreadorJogadores(self.configuracao_rastreador, dispositivo=self.detector.dispositivo)
             trajetorias = ConstrutorTrajetorias()
             frames = 0
             for _, instante, quadro in video.ler_quadros():
                 deteccoes = self.detector.detectar(quadro, instante)
                 rastreamentos = rastreador.atualizar(deteccoes, quadro, instante)
-                for rastreamento, posicao in zip(rastreamentos, projetor.projetar(rastreamentos)):
+                posicoes = projetor.projetar(rastreamentos)
+                if ao_processar_quadro is not None:
+                    ao_processar_quadro(instante, rastreamentos, posicoes)
+                for rastreamento, posicao in zip(rastreamentos, posicoes):
                     trajetorias.adicionar(rastreamento.id, posicao)
                 frames += 1
             if not frames:
