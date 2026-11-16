@@ -1,6 +1,5 @@
-"""Estimate lens correction from field lines and project image points."""
+"""Geometric lens correction, field calibration and camera parameter storage."""
 
-import argparse
 from pathlib import Path
 
 import cv2
@@ -257,124 +256,7 @@ def load_camera_parameters(path, image_size):
         raise ValueError("Camera parameter must be finite.")
     homography = np.asarray(data.get("homography"), dtype=float)
     if homography.shape != (3, 3) or not np.isfinite(homography).all() or np.linalg.matrix_rank(homography) < 3:
-        raise ValueError("Camera YAML requires a finite, nonsingular 3x3 homography; regenerate it with field_projection.py.")
+        raise ValueError("Camera YAML requires a finite, nonsingular 3x3 homography; regenerate it with annotate_field.py.")
     return model, parameter, homography
 
 
-def read_frame(video, frame_number):
-    if frame_number < 1:
-        raise ValueError("Frame number must be at least 1 (one-based).")
-    capture = cv2.VideoCapture(str(video))
-    try:
-        if not capture.isOpened():
-            raise ValueError(f"Could not open video: {video}")
-        capture.set(cv2.CAP_PROP_POS_FRAMES, frame_number - 1)
-        ok, frame = capture.read()
-        if not ok:
-            raise ValueError(f"Could not read frame {frame_number} from {video}.")
-        return frame
-    finally:
-        capture.release()
-
-
-def show_comparison(frame, boxes, positions, frame_number):
-    import matplotlib.pyplot as plt
-    from matplotlib.patches import Rectangle, Circle
-
-    fig, (image_ax, field_ax) = plt.subplots(1, 2, figsize=(16, 7),
-                                              gridspec_kw={"width_ratios": [1.5, 1]})
-    image_ax.imshow(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-    image_ax.set_title(f"Frame {frame_number}: jogadores detectados")
-    image_ax.axis("off")
-    field_ax.set_facecolor("#347b46")
-    field_ax.add_patch(Rectangle((-1, -1), 2, 2, fill=False, edgecolor="white", linewidth=2))
-    field_ax.axvline(0, color="white")
-    field_ax.add_patch(Circle((0, 0), .18, fill=False, edgecolor="white"))
-    field_ax.set_aspect("equal")
-    field_ax.set_xlabel("x normalizado")
-    field_ax.set_ylabel("y normalizado")
-    field_ax.set_title("Posições no campo")
-    # Keep out-of-field detections visible instead of silently clipping them.
-    all_positions = np.vstack((np.array([[-1, -1], [1, 1]]), positions))
-    field_ax.set_xlim(min(-1.1, all_positions[:, 0].min() - .1), max(1.1, all_positions[:, 0].max() + .1))
-    field_ax.set_ylim(max(1.1, all_positions[:, 1].max() + .1), min(-1.1, all_positions[:, 1].min() - .1))
-    for index, (box, position) in enumerate(zip(boxes, positions), start=1):
-        x1, y1, x2, y2 = box
-        color = "yellow"
-        image_ax.add_patch(Rectangle((x1, y1), x2 - x1, y2 - y1,
-                                      fill=False, edgecolor=color, linewidth=2))
-        image_ax.scatter([(x1 + x2) / 2], [y2], color=[color], s=30)
-        image_ax.text(x1, y1, str(index), color="white", bbox={"facecolor": color, "edgecolor": "none"})
-        field_ax.scatter(*position, color=[color], edgecolor="black", zorder=3)
-        field_ax.annotate(str(index), position, xytext=(4, 4), textcoords="offset points", color="white")
-    fig.tight_layout()
-    plt.show()
-
-
-def main():
-    parser = argparse.ArgumentParser(description="Detect players in a video frame and project them onto a normalized field.")
-    parser.add_argument("--video", type=Path, required=True)
-    parser.add_argument("--field", type=Path, required=True, help="YAML with top, bottom, left and right field lines")
-    parser.add_argument("--model", type=Path, required=True, help="Ultralytics YOLO weights")
-    parser.add_argument("--frame", type=int, required=True, help="Frame number, starting at 1")
-    parser.add_argument("--camera-model", choices=("fisheye", "radial"), default="radial",
-                        help="Lens model (default: radial)")
-    parser.add_argument("--camera-params", type=Path,
-                        help="Save camera model and distortion coefficients to YAML (overwrites it)")
-    parser.add_argument("--class-id", type=int, help="Player class ID; defaults to a class named player or person")
-    parser.add_argument("--conf", type=float, default=0.25)
-    args = parser.parse_args()
-
-    if args.camera_params and args.camera_params.resolve() in {
-            args.field.resolve(), args.video.resolve(), args.model.resolve()}:
-        parser.error("--camera-params must be different from the input files")
-
-    frame = read_frame(args.video, args.frame)
-    lines, center_line, center_spot = load_field(args.field)
-    height, width = frame.shape[:2]
-    center, scale, radial, homography, rms, at_bound = fit_field_projection(
-        lines, (width, height), cameramodel=args.camera_model, center_line=center_line,
-        center_spot=center_spot)
-    parameter = "normalized focal length" if args.camera_model == "fisheye" else "radial coefficient"
-    print(f"Camera model: {args.camera_model}; {parameter}: {radial:.6f}; "
-          f"line RMS pixels (bottom/right/top/left{'/center' if center_line else ''}): {rms}")
-    if center_line is None:
-        print("Warning: no center line in YAML; left/right projection is less constrained.")
-    else:
-        center_positions = project_points(center_line, center, scale, radial, homography, args.camera_model)
-        print(f"Center line x RMS: {np.sqrt(np.mean(center_positions[:, 0] ** 2)):.4f} "
-              "(ideal: 0)")
-    if center_spot is not None:
-        print("Center spot projection:", project_points(center_spot, center, scale, radial, homography, args.camera_model))
-    else:
-        print("Warning: no center_spot in YAML; the field center is not independently constrained.")
-    if at_bound:
-        print("Warning: lens fit reached its bound; check the field points and lens model.")
-    if args.camera_params:
-        save_camera_parameters(args.camera_params, args.camera_model, (width, height),
-                               center, scale, radial, homography)
-        print(f"Estimated camera parameters saved to: {args.camera_params}")
-
-    from ultralytics import YOLO
-    model = YOLO(str(args.model))
-    names = model.names
-    if args.class_id is None:
-        matches = [i for i, name in names.items() if str(name).lower() in ("player", "person")]
-        if not matches:
-            raise ValueError(f"No player/person class found in model {names}; specify --class-id.")
-        class_ids = matches
-    else:
-        if args.class_id not in names:
-            raise ValueError(f"Class ID {args.class_id} not found in model: {names}")
-        class_ids = [args.class_id]
-    result = model.predict(frame, classes=class_ids, conf=args.conf, verbose=False)[0]
-    boxes = result.boxes.xyxy.cpu().numpy().reshape(-1, 4)
-    feet = np.column_stack(((boxes[:, 0] + boxes[:, 2]) / 2, boxes[:, 3]))
-    positions = project_points(feet, center, scale, radial, homography, args.camera_model)
-    for index, position in enumerate(positions, start=1):
-        print(f"Player {index}: x={position[0]:.4f}, y={position[1]:.4f}")
-    show_comparison(frame, boxes, positions, args.frame)
-
-
-if __name__ == "__main__":
-    main()

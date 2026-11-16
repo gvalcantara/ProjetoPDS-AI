@@ -1,0 +1,223 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" version="24.7.17">
+  <diagram name="ProjetoPDS-AI">
+    <mxGraphModel dx="1600" dy="1100" grid="1" gridSize="10" page="1" pageWidth="2200" pageHeight="1600">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="c0" value="&lt;b&gt;ProcessadorAnalise&lt;/b&gt;&lt;hr&gt;+ executar(solicitacao): ResultadoAnalise&lt;br&gt;Coordena o pipeline e informa progresso" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#dae8fc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="300" y="20" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c1" value="&lt;b&gt;LeitorVideo&lt;/b&gt;&lt;hr&gt;+ metadados()&lt;br&gt;+ lerQuadros()&lt;br&gt;Lê vídeo e instantes" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#dae8fc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="20" y="230" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c2" value="&lt;b&gt;DetectorJogadores&lt;/b&gt;&lt;hr&gt;+ detectar(quadro): Detecao[]&lt;br&gt;Localiza jogadores" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#dae8fc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="300" y="230" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c3" value="&lt;b&gt;RastreadorJogadores&lt;/b&gt;&lt;hr&gt;+ atualizar(deteccoes): Rastreamento[]&lt;br&gt;Associa detecções no tempo" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#dae8fc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="580" y="230" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c4" value="&lt;b&gt;CalibradorCampo&lt;/b&gt;&lt;hr&gt;+ calibrar(marcacoes): CalibracaoCampo&lt;br&gt;Estima câmera e homografia" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#dae8fc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="860" y="230" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c5" value="&lt;b&gt;ProjetorCampo&lt;/b&gt;&lt;hr&gt;+ projetar(ponto, calibracao): Posicao&lt;br&gt;Converte imagem para campo" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#dae8fc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1140" y="230" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c6" value="&lt;b&gt;ConstrutorTrajetorias&lt;/b&gt;&lt;hr&gt;+ adicionar(posicao)&lt;br&gt;+ finalizar(): Trajetoria[]" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#dae8fc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1420" y="230" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c7" value="&lt;b&gt;CalculadoraEstatisticas&lt;/b&gt;&lt;hr&gt;+ calcular(trajetorias): Estatisticas&lt;br&gt;Calcula métricas disponíveis" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#dae8fc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1700" y="230" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c8" value="&lt;b&gt;Deteccao&lt;/b&gt;&lt;hr&gt;caixaImagem, confianca, instante&lt;br&gt;Observação em coordenadas da imagem" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#fff2cc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="300" y="500" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c9" value="&lt;b&gt;Rastreamento&lt;/b&gt;&lt;hr&gt;idRastreamento, trajetoria&lt;br&gt;Identificador temporário do rastreador" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#fff2cc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="580" y="500" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c10" value="&lt;b&gt;CalibracaoCampo&lt;/b&gt;&lt;hr&gt;modeloCamera, parametrosLente, homografia&lt;br&gt;Parâmetros estimados da projeção" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#fff2cc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="860" y="500" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c11" value="&lt;b&gt;Posicao&lt;/b&gt;&lt;hr&gt;instante, xCampo, yCampo&lt;br&gt;Coordenadas normalizadas ou métricas" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#fff2cc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1140" y="500" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c12" value="&lt;b&gt;Trajetoria&lt;/b&gt;&lt;hr&gt;idRastreamento, posicoes[]&lt;br&gt;Sequência temporal de posições" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#fff2cc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1420" y="500" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c13" value="&lt;b&gt;ResultadoAnalise&lt;/b&gt;&lt;hr&gt;trajetorias, estatisticas, metadados&lt;br&gt;Resultado transferido ao App" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#fff2cc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1700" y="500" width="245" height="145" />
+        </mxCell>
+        <mxCell id="e0" value="coordena" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c0" target="c1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e1" value="coordena" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c0" target="c2">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e2" value="coordena" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c0" target="c3">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e3" value="coordena" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c0" target="c4">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e4" value="coordena" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c0" target="c5">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e5" value="coordena" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c0" target="c6">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e6" value="coordena" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c0" target="c7">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e7" value="produz" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c2" target="c8">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e8" value="produz" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c3" target="c9">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e9" value="produz" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c4" target="c10">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e10" value="usa" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c5" target="c10">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e11" value="produz" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c5" target="c11">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e12" value="produz" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c6" target="c12">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e13" value="compõe" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c7" target="c13">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e14" value="contém" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c9" target="c12">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e15" value="contém" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c12" target="c11">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="ProjetoPDS-App">
+    <mxGraphModel dx="1600" dy="1100" grid="1" gridSize="10" page="1" pageWidth="2200" pageHeight="1600">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="c0" value="&lt;b&gt;ControladorPartidas&lt;/b&gt;&lt;hr&gt;+ criar()&lt;br&gt;+ consultar()&lt;br&gt;Recebe requisições da interface" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#d5e8d4;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="20" y="30" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c1" value="&lt;b&gt;ServicoUpload&lt;/b&gt;&lt;hr&gt;+ enviar(video)&lt;br&gt;Valida e armazena arquivo" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#d5e8d4;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="300" y="30" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c2" value="&lt;b&gt;ServicoCalibracao&lt;/b&gt;&lt;hr&gt;+ salvarMarcacoes()&lt;br&gt;Encaminha solicitação de calibração ao AI" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#d5e8d4;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="580" y="30" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c3" value="&lt;b&gt;ServicoAnalise&lt;/b&gt;&lt;hr&gt;+ iniciar()&lt;br&gt;+ consultarStatus()&lt;br&gt;Coordena fila e persistência" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#d5e8d4;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="860" y="30" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c4" value="&lt;b&gt;ExecutorAnaliseAI&lt;/b&gt;&lt;hr&gt;+ executar(analise)&lt;br&gt;Adaptador para chamar ProjetoPDS-AI" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#d5e8d4;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1140" y="30" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c5" value="&lt;b&gt;ServicoResultados&lt;/b&gt;&lt;hr&gt;+ consultarPosicoes(intervalo)&lt;br&gt;+ consultarEstatisticas()" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#d5e8d4;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1420" y="30" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c6" value="&lt;b&gt;Partida&lt;/b&gt;&lt;hr&gt;id, titulo, data, videoId&lt;br&gt;Agrupa vídeos e análises" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#fff2cc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="20" y="340" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c7" value="&lt;b&gt;Video&lt;/b&gt;&lt;hr&gt;id, localizacao, duracao, fps, resolucao&lt;br&gt;Metadados do arquivo" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#fff2cc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="300" y="340" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c8" value="&lt;b&gt;MarcacoesCampo&lt;/b&gt;&lt;hr&gt;id, videoId, quadro, pontos&lt;br&gt;Entrada fornecida pelo usuário" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#fff2cc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="580" y="340" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c9" value="&lt;b&gt;Analise&lt;/b&gt;&lt;hr&gt;id, partidaId, status, progresso, erro&lt;br&gt;Registro de uma execução" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#fff2cc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="860" y="340" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c10" value="&lt;b&gt;ResultadoArmazenado&lt;/b&gt;&lt;hr&gt;analiseId, localizacao, metadados&lt;br&gt;Referência aos resultados gerados pelo AI" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#fff2cc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1140" y="340" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c11" value="&lt;b&gt;Repositorio&lt;/b&gt;&lt;hr&gt;+ salvar(entidade)&lt;br&gt;+ consultar(id)&lt;br&gt;Persistência de dados" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#d5e8d4;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1420" y="340" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c12" value="&lt;b&gt;ArmazenamentoArquivos&lt;/b&gt;&lt;hr&gt;+ salvar(arquivo)&lt;br&gt;+ obter(referencia)&lt;br&gt;Vídeos e artefatos" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#d5e8d4;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1700" y="340" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c13" value="&lt;b&gt;TelaUpload&lt;/b&gt;&lt;hr&gt;Seleciona vídeo e dados da partida" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#f8cecc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="20" y="660" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c14" value="&lt;b&gt;TelaCalibracao&lt;/b&gt;&lt;hr&gt;Exibe quadro e coleta marcações" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#f8cecc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="300" y="660" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c15" value="&lt;b&gt;TelaAnalise&lt;/b&gt;&lt;hr&gt;Mostra estado e progresso" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#f8cecc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="580" y="660" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c16" value="&lt;b&gt;VisualizadorPartida&lt;/b&gt;&lt;hr&gt;Reproduz vídeo e controla o instante" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#f8cecc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="860" y="660" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c17" value="&lt;b&gt;MapaCampo&lt;/b&gt;&lt;hr&gt;Exibe posições e trajetórias" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#f8cecc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1140" y="660" width="245" height="145" />
+        </mxCell>
+        <mxCell id="c18" value="&lt;b&gt;PainelEstatisticas&lt;/b&gt;&lt;hr&gt;Apresenta métricas produzidas pelo AI" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacing=8;fillColor=#f8cecc;strokeColor=#526b82;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1420" y="660" width="245" height="145" />
+        </mxCell>
+        <mxCell id="e0" value="gerencia" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c0" target="c6">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e1" value="registra" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c1" target="c7">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e2" value="usa" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c1" target="c12">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e3" value="registra" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c2" target="c8">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e4" value="gerencia" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c3" target="c9">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e5" value="solicita" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c3" target="c4">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e6" value="persiste resultado" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c4" target="c10">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e7" value="consulta" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c5" target="c10">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e8" value="usa" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c5" target="c11">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e9" value="possui" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c6" target="c7">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e10" value="possui" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c6" target="c9">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e11" value="produz" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c9" target="c10">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e12" value="persiste" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c11" target="c6">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e13" value="envia" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c13" target="c1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e14" value="envia" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c14" target="c2">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e15" value="consulta" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c15" target="c3">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e16" value="consulta" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c16" target="c5">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e17" value="consulta" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c17" target="c5">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e18" value="consulta" style="endArrow=open;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;fontSize=11;" edge="1" parent="1" source="c18" target="c5">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
