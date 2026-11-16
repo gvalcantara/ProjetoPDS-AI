@@ -104,6 +104,26 @@ print("CUDA disponível:", torch.cuda.is_available())
 
 ## Ferramentas
 
+### Instalação como pacote
+
+Para gerar um wheel com os componentes de `src/`:
+
+```bash
+python -m pip install build
+python -m build --wheel
+python -m pip install dist/hattrick_ai-0.1.0-py3-none-any.whl
+```
+
+O pacote instalado pode ser importado como `hattrick_ai`:
+
+```python
+from hattrick_ai import CalibradorCampo, LeitorVideo
+```
+
+O wheel não inclui os scripts de `tools/`, datasets ou pesos de modelos.
+Quando necessários, os pesos devem ser fornecidos por um caminho externo.
+Para uso com CUDA, instale a versão adequada do PyTorch para o ambiente.
+
 ### Leitura de vídeo e calibração como componentes
 
 O pacote `src` oferece `LeitorVideo`, `CalibradorCampo` e as classes de dados

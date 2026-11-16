@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hattrick-ai"
+version = "0.1.0"
+description = "Componentes para rastreamento e projeção de jogadores de futebol"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.26.4,<2.2",
+    "scipy>=1.13,<2.0",
+    "opencv-python>=4.10.0.84,<5.0",
+    "PyYAML>=6.0,<7.0",
+    "ijson>=3.2,<4.0",
+    "torch>=2.5,<3.0",
+    "ultralytics>=8.4.211,<9.0",
+    "lap>=0.5.12",
+]
+
+[tool.setuptools]
+packages = ["hattrick_ai"]
+package-dir = {hattrick_ai = "src"}
