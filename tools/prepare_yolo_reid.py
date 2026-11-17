@@ -11,11 +11,15 @@ from create_reid_dataset import prepare as prepare_reid
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--mot-root', type=Path, required=True, help='Directory containing <match>.txt and clips/<match>.mp4')
-    parser.add_argument('--output', type=Path, required=True, help='Empty output directory; creates yolo/ and reid/')
+    parser.add_argument('--output', type=Path, required=True, help='Empty output directory for the selected datasets')
+    parser.add_argument('--yolo', action='store_true', help='Prepare the YOLO detection dataset')
+    parser.add_argument('--reid', action='store_true', help='Prepare the ReID crops dataset')
     parser.add_argument('--interval', type=int, default=36, help='Sample one frame every N frames (default: 36)')
     parser.add_argument('--splits', type=Path, help='JSON with disjoint train, val, test match ID lists')
     parser.add_argument('--one-based', nargs='*', default=[], metavar='MATCH', help='Matches with annotations indexed from 1')
     args = parser.parse_args()
+    if not (args.yolo or args.reid):
+        parser.error('Select at least one dataset with --yolo and/or --reid')
     if args.interval <= 0:
         parser.error('--interval must be positive')
     splits = json.loads(args.splits.read_text(encoding='utf-8')) if args.splits else DEFAULT_SPLITS
@@ -33,11 +37,14 @@ def main():
         for path in (args.mot_root / f'{match}.txt', args.mot_root / 'clips' / f'{match}.mp4'):
             if not path.is_file():
                 parser.error(f'Missing input: {path}')
-    print('Preparing YOLO dataset...', flush=True)
-    create_dataset(args.mot_root, args.output / 'yolo', splits, args.interval, {m: 1 for m in args.one_based})
-    print('Preparing ReID dataset...', flush=True)
-    prepare_reid(args.mot_root, args.output / 'reid', splits, args.interval, set(args.one_based))
-    print(f'YOLO: {args.output / "yolo" / "dataset.yaml"}\nReID: {args.output / "reid" / "metadata.csv"}')
+    if args.yolo:
+        print('Preparing YOLO dataset...', flush=True)
+        create_dataset(args.mot_root, args.output / 'yolo', splits, args.interval, {m: 1 for m in args.one_based})
+        print(f'YOLO: {args.output / "yolo" / "dataset.yaml"}')
+    if args.reid:
+        print('Preparing ReID dataset...', flush=True)
+        prepare_reid(args.mot_root, args.output / 'reid', splits, args.interval, set(args.one_based))
+        print(f'ReID: {args.output / "reid" / "metadata.csv"}')
 
 
 if __name__ == '__main__':

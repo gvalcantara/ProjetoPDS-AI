@@ -488,12 +488,12 @@ Ambos aceitam `--splits arquivo.json` com listas não vazias de partidas `train`
 Para gerar os dois conjuntos com a mesma divisão e amostragem em um único comando:
 
 ```bash
-python tools/prepare_yolo_reid.py --mot-root data/soccertrack/mot \
+python tools/prepare_yolo_reid.py --yolo --reid --mot-root data/soccertrack/mot \
   --output data/treinamento --interval 36 --one-based 118578
 ```
 
 O notebook `notebooks/01_train.ipynb` também executa esse preparador antes de treinar; ajuste nele `MOT_ROOT`, `PREPARED`, `ONE_BASED` e, se necessário, `SPLITS`. No Colab, a branch remota precisa conter os scripts antes da clonagem.
 
-A saída contém `yolo/dataset.yaml` e `reid/metadata.csv`. Use `--one-based 118578` apenas com a anotação original dessa partida; a cópia local documentada já foi normalizada para base zero. Se a execução for interrompida, escolha outro diretório vazio para recomeçar. Esse comando prepara dados: a YOLO é treinada com `imgsz=1280` e a rede ReID deve ser treinada separadamente com uma implementação compatível com os recortes.
+Escolha `--yolo`, `--reid` ou ambos. A saída contém, conforme a seleção, `yolo/dataset.yaml` e/ou `reid/metadata.csv`. Use `--one-based 118578` apenas com a anotação original dessa partida; a cópia local documentada já foi normalizada para base zero. Se a execução for interrompida, escolha outro diretório vazio para recomeçar. Esse comando prepara dados: a YOLO é treinada com `imgsz=1280` e a rede ReID deve ser treinada separadamente com uma implementação compatível com os recortes.
 
-No Colab, o notebook de treinamento prepara YOLO e ReID em `/content/dataset_yolo_reid` (temporário), usa os grupos MOT padrão e salva pesos e métricas no Drive. Após treinar, processa o clipe de teste `132877` com a calibração em `configs/cameras/132877.yaml`, salvando o vídeo na pasta da execução. Os recortes temporários são perdidos quando a sessão termina. A calibração é específica desse vídeo.
+No Colab, o notebook de treinamento prepara YOLO em `/content/dataset_yolo_reid` (temporário), usa os grupos MOT padrão e salva pesos e métricas no Drive. Após treinar, processa o clipe de teste `132877` com a calibração em `configs/cameras/132877.yaml`, salvando o vídeo na pasta da execução. Os dados temporários são perdidos quando a sessão termina. A calibração é específica desse vídeo.
