@@ -106,13 +106,40 @@ print("CUDA disponível:", torch.cuda.is_available())
 
 ### Instalação como pacote
 
-Para gerar um wheel com os componentes de `src/`:
+Para gerar um wheel com os componentes de `src/`, execute na raiz deste
+repositório:
 
 ```bash
 python -m pip install build
 python -m build --wheel
-python -m pip install dist/hattrick_ai-0.1.4-py3-none-any.whl
 ```
+
+O arquivo é criado em `dist/` com a versão definida em `pyproject.toml`.
+Para testar a versão atual em um ambiente virtual:
+
+```bash
+python -m pip install dist/hattrick_ai-0.1.5-py3-none-any.whl
+```
+
+Para disponibilizar o wheel ao backend do ProjetoPDS-App, copie-o para a pasta
+de wheels do app e atualize a entrada correspondente em
+`ProjetoPDS-App/backend/requirements.txt` para o novo nome:
+
+```bash
+cp dist/hattrick_ai-0.1.5-py3-none-any.whl \
+    ../ProjetoPDS-App/backend/wheels/
+```
+
+Depois, a partir de `ProjetoPDS-App/backend`, instale as dependências no
+ambiente virtual do backend para aplicar a atualização:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+Ao alterar a versão em `pyproject.toml`, substitua `0.1.5` nos comandos e na
+entrada de `requirements.txt` pela versão gerada. O caminho relativo de cópia
+pressupõe que os dois repositórios estão lado a lado.
 
 O pacote instalado pode ser importado como `hattrick_ai`:
 
@@ -120,7 +147,8 @@ O pacote instalado pode ser importado como `hattrick_ai`:
 from hattrick_ai import CalibradorCampo, LeitorVideo
 ```
 
-O wheel inclui os pesos do modelo `players_n_1280_baseline`, mas não os
+O wheel inclui os pesos `player_yolo26s_1280_baseline` usados pelo extrator e
+`players_n_1280_baseline` usado experimentalmente pelo BoT-SORT, mas não os
 scripts de `tools/` nem datasets.
 Para uso com CUDA, instale a versão adequada do PyTorch para o ambiente.
 
@@ -367,6 +395,7 @@ Abra um notebook diretamente da branch `main` do GitHub:
 | Criação do dataset | [Abrir no Colab](https://colab.research.google.com/github/gvalcantara/ProjetoPDS-AI/blob/main/notebooks/00_dataset_creator.ipynb) |
 | Treinamento | [Abrir no Colab](https://colab.research.google.com/github/gvalcantara/ProjetoPDS-AI/blob/main/notebooks/01_train.ipynb) |
 | Teste em vídeo | [Abrir no Colab](https://colab.research.google.com/github/gvalcantara/ProjetoPDS-AI/blob/main/notebooks/02_test.ipynb) |
+| Baseline GSR do SoccerTrack | `notebooks/03_soccertrack_gsr_baseline.ipynb` |
 
 Os links abrem a versão publicada no GitHub, não alterações locais. Para usar
 outra branch, substitua `main` pelo nome dela na URL. No Colab, selecione uma
@@ -437,3 +466,62 @@ As principais bibliotecas utilizadas são:
 ## Licença
 
 Projeto desenvolvido para fins acadêmicos no contexto da disciplina Projeto Nível I em Computação e Processamento de Sinais I.
+
+### Baseline GSR oficial
+
+O notebook `notebooks/03_soccertrack_gsr_baseline.ipynb` clona uma versão fixa do SoccerTrack v2 e executa seus módulos GSR de treinamento e avaliação. Ele exige dados GSR, vídeos panorâmicos calibrados, anotações MOT e homografias compatíveis para ambos os tempos das partidas selecionadas. O notebook verifica arquivos e registra saídas no caminho configurado. O baseline oficial treina apenas com o primeiro dataset por tempo gerado e usa um placeholder de ReID; não é uma rede de reidentificação treinada.
+
+#### Download e preparação dos dados GSR
+
+O dataset publicado requer acesso autorizado no [Hugging Face](https://huggingface.co/datasets/atomscott/soccertrack-v2). Instale `huggingface_hub` e autentique-se com `hf auth login`. Faça primeiro uma simulação para verificar tamanho e disponibilidade; as listas devem coincidir com as configuradas no notebook:
+
+```bash
+python tools/download_soccertrack_gsr.py --dest data/soccertrack-raw \
+  --train 117092 --val 118578 --test 128057 --dry-run
+```
+
+Retire `--dry-run` para baixar. O download inclui os dois vídeos de cada partida, dados brutos de calibração e rastreamento e GSR das partidas de teste. São arquivos grandes; use uma revisão fixa com `--revision` para reproduzir o download. É possível acrescentar outras partidas às listas, mantendo-as disjuntas. Não são baixados nem reutilizados os MOT de clipes curtos como anotações de jogos completos.
+
+A preparação usa a função de calibração original do SoccerTrack e requer um checkout do SoccerTrack v2 com suas dependências instaladas no mesmo Python. São necessários **arquivos MOT gerados para os vídeos completos calibrados**, em `MOT_ROOT/<partida>/<1st_half|2nd_half>/gt/gt.txt`, com frames alinhados ao vídeo e indexação compatível com o gerador do baseline. Eles não estão presentes como arquivos por tempo de jogo no dataset publicado. Os dados brutos de rastreamento não são, por si só, caixas de referência prontas: consulte o [processamento oficial](https://github.com/AtomScott/SoccerTrack-v2/blob/main/docs/ground_truth_creation.md) para geração e validação. Não renomeie os arquivos MOT dos clipes de quatro minutos como se fossem os tempos completos.
+
+```bash
+python tools/prepare_soccertrack_gsr.py \
+  --source data/soccertrack-raw --dest data/soccertrack-v2-data \
+  --soccertrack /caminho/SoccerTrack-v2 --mot-root /caminho/mot-calibrado \
+  --train 117092 --val 118578 --test 128057
+```
+
+O script interrompe antes de processar se faltar alguma entrada e recusa sobrescrever resultados. Calibrar vídeos inteiros pode demorar muito e exigir armazenamento adicional. Confirme o alinhamento temporal, a base dos frames e a geometria das caixas manualmente: a presença de arquivos não garante sua correção. No notebook, ajuste `DATA_ROOT`, `TRAIN_MATCHES`, `VAL_MATCHES` e `TEST_MATCHES` para os mesmos valores usados nos scripts. O baseline treina o detector usando apenas o primeiro dataset por tempo criado e não treina ReID.
+
+### Treinamento YOLO e ReID com os clipes MOT
+
+Para treinar a YOLO e preparar recortes para ReID, basta baixar `mot/` do SoccerTrack v2. O notebook GSR acima é um experimento diferente e exige os dados adicionais indicados nele; os scripts GSR não são necessários para este fluxo MOT.
+
+```bash
+pip install -U huggingface_hub
+hf auth login
+python tools/download_soccertrack_mot.py --dest data/soccertrack --dry-run
+python tools/download_soccertrack_mot.py --dest data/soccertrack
+```
+
+Solicite acesso ao dataset no Hugging Face se necessário. `--match ID` pode ser repetido para baixar partidas específicas. Os arquivos ficam em `data/soccertrack/mot/`, incluindo `clips/`. As anotações baixadas são originais: confirme a base de frames; a documentação da cópia local indica que `118578` original começa em 1. O parâmetro `--one-based 118578` abaixo aplica-se ao arquivo original, não à cópia local já normalizada.
+
+```bash
+python tools/create_dataset.py --mot-root data/soccertrack/mot --output data/yolo --interval 36 --one-based 118578
+python tools/create_reid_dataset.py --mot-root data/soccertrack/mot --output data/reid --interval 36 --one-based 118578
+```
+
+Ambos aceitam `--splits arquivo.json` com listas não vazias de partidas `train`, `val` e `test`, sem partidas repetidas. O segundo grava recortes em `<split>/<partida>_<id>/` e um `metadata.csv`; a identidade é única por partida, não global entre partidas. A consistência dos IDs deve ser conferida antes do treinamento. Os recortes são dados para ReID: o script não treina uma rede. Os clipes duram cerca de quatro minutos e não permitem, por si só, avaliar persistência durante uma partida inteira. O tamanho de entrada da YOLO permanece 1280.
+
+Para gerar os dois conjuntos com a mesma divisão e amostragem em um único comando:
+
+```bash
+python tools/prepare_yolo_reid.py --yolo --reid --mot-root data/soccertrack/mot \
+  --output data/treinamento --interval 36 --one-based 118578
+```
+
+O notebook `notebooks/01_train.ipynb` também executa esse preparador antes de treinar; ajuste nele `MOT_ROOT`, `PREPARED`, `ONE_BASED` e, se necessário, `SPLITS`. No Colab, a branch remota precisa conter os scripts antes da clonagem.
+
+Escolha `--yolo`, `--reid` ou ambos. A saída contém, conforme a seleção, `yolo/dataset.yaml` e/ou `reid/metadata.csv`. Use `--one-based 118578` apenas com a anotação original dessa partida; a cópia local documentada já foi normalizada para base zero. Se a execução for interrompida, escolha outro diretório vazio para recomeçar. Esse comando prepara dados: a YOLO é treinada com `imgsz=1280` e a rede ReID deve ser treinada separadamente com uma implementação compatível com os recortes.
+
+No Colab, o notebook de treinamento prepara YOLO em `/content/dataset_yolo_reid` (temporário), usa os grupos MOT padrão e salva pesos e métricas no Drive. Após treinar, processa o clipe de teste `132877` com a calibração em `configs/cameras/132877.yaml`, salvando o vídeo na pasta da execução. Os dados temporários são perdidos quando a sessão termina. A calibração é específica desse vídeo.

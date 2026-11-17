@@ -21,7 +21,7 @@ class ExtratorTrajetorias:
                  classe_id=None, dispositivo=None, configuracao_rastreador="botsort.yaml"):
         self.parametros_camera = parametros_camera
         self.configuracao_rastreador = configuracao_rastreador
-        recurso = files(__package__).joinpath("data", "players_n_1280_baseline.pt")
+        recurso = files(__package__).joinpath("data", "player_yolo26s_1280_baseline.pt")
         with as_file(recurso) as pesos:
             self.detector = DetectorJogadores(pesos, confianca=confianca,
                                              tamanho_imagem=tamanho_imagem,

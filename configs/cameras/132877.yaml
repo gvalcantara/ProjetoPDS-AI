@@ -1,0 +1,34 @@
+camera_model: fisheye
+image_size:
+  width: 4096
+  height: 1084
+optical_center_pixels:
+- 2048.0
+- 542.0
+normalization_scale_pixels: 2118.506077404547
+homography:
+- - -0.001453356465669158
+  - 0.000247818867052289
+  - 2.9103791635791945
+- - -0.0001399897326459385
+  - -0.014876861928187315
+  - 3.900076647328188
+- - -7.037472597179361e-05
+  - -0.009822734575677144
+  - 0.22983564087125918
+camera_matrix:
+- - 1461.0386740721015
+  - 0.0
+  - 2048.0
+- - 0.0
+  - 1461.0386740721015
+  - 542.0
+- - 0.0
+  - 0.0
+  - 1.0
+distortion_coefficients:
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+distortion_coefficients_status: fixed_not_estimated
