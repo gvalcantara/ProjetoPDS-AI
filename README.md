@@ -106,13 +106,40 @@ print("CUDA disponível:", torch.cuda.is_available())
 
 ### Instalação como pacote
 
-Para gerar um wheel com os componentes de `src/`:
+Para gerar um wheel com os componentes de `src/`, execute na raiz deste
+repositório:
 
 ```bash
 python -m pip install build
 python -m build --wheel
-python -m pip install dist/hattrick_ai-0.1.4-py3-none-any.whl
 ```
+
+O arquivo é criado em `dist/` com a versão definida em `pyproject.toml`.
+Para testar a versão atual em um ambiente virtual:
+
+```bash
+python -m pip install dist/hattrick_ai-0.1.5-py3-none-any.whl
+```
+
+Para disponibilizar o wheel ao backend do ProjetoPDS-App, copie-o para a pasta
+de wheels do app e atualize a entrada correspondente em
+`ProjetoPDS-App/backend/requirements.txt` para o novo nome:
+
+```bash
+cp dist/hattrick_ai-0.1.5-py3-none-any.whl \
+    ../ProjetoPDS-App/backend/wheels/
+```
+
+Depois, a partir de `ProjetoPDS-App/backend`, instale as dependências no
+ambiente virtual do backend para aplicar a atualização:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+Ao alterar a versão em `pyproject.toml`, substitua `0.1.5` nos comandos e na
+entrada de `requirements.txt` pela versão gerada. O caminho relativo de cópia
+pressupõe que os dois repositórios estão lado a lado.
 
 O pacote instalado pode ser importado como `hattrick_ai`:
 
@@ -120,7 +147,8 @@ O pacote instalado pode ser importado como `hattrick_ai`:
 from hattrick_ai import CalibradorCampo, LeitorVideo
 ```
 
-O wheel inclui os pesos do modelo `players_n_1280_baseline`, mas não os
+O wheel inclui os pesos `player_yolo26s_1280_baseline` usados pelo extrator e
+`players_n_1280_baseline` usado experimentalmente pelo BoT-SORT, mas não os
 scripts de `tools/` nem datasets.
 Para uso com CUDA, instale a versão adequada do PyTorch para o ambiente.
 
