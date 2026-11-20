@@ -404,6 +404,7 @@ Abra um notebook diretamente da branch `main` do GitHub:
 | Treinamento | [Abrir no Colab](https://colab.research.google.com/github/gvalcantara/ProjetoPDS-AI/blob/main/notebooks/01_train.ipynb) |
 | Teste em vídeo | [Abrir no Colab](https://colab.research.google.com/github/gvalcantara/ProjetoPDS-AI/blob/main/notebooks/02_test.ipynb) |
 | Baseline GSR do SoccerTrack | `notebooks/03_soccertrack_gsr_baseline.ipynb` |
+| Baseline BAS do SoccerTrack | `notebooks/04_soccertrack_bas_baseline.ipynb` |
 
 Os links abrem a versão publicada no GitHub, não alterações locais. Para usar
 outra branch, substitua `main` pelo nome dela na URL. No Colab, selecione uma
