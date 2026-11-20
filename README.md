@@ -118,7 +118,7 @@ O arquivo é criado em `dist/` com a versão definida em `pyproject.toml`.
 Para testar a versão atual em um ambiente virtual:
 
 ```bash
-python -m pip install dist/hattrick_ai-0.1.5-py3-none-any.whl
+python -m pip install dist/hattrick_ai-0.1.6-py3-none-any.whl
 ```
 
 Para disponibilizar o wheel ao backend do ProjetoPDS-App, copie-o para a pasta
@@ -126,7 +126,7 @@ de wheels do app e atualize a entrada correspondente em
 `ProjetoPDS-App/backend/requirements.txt` para o novo nome:
 
 ```bash
-cp dist/hattrick_ai-0.1.5-py3-none-any.whl \
+cp dist/hattrick_ai-0.1.6-py3-none-any.whl \
     ../ProjetoPDS-App/backend/wheels/
 ```
 
@@ -137,7 +137,7 @@ ambiente virtual do backend para aplicar a atualização:
 python -m pip install -r requirements.txt
 ```
 
-Ao alterar a versão em `pyproject.toml`, substitua `0.1.5` nos comandos e na
+Ao alterar a versão em `pyproject.toml`, substitua `0.1.6` nos comandos e na
 entrada de `requirements.txt` pela versão gerada. O caminho relativo de cópia
 pressupõe que os dois repositórios estão lado a lado.
 
@@ -147,9 +147,9 @@ O pacote instalado pode ser importado como `hattrick_ai`:
 from hattrick_ai import CalibradorCampo, LeitorVideo
 ```
 
-O wheel inclui os pesos `player_yolo26s_1280_baseline` usados pelo extrator e
-`players_n_1280_baseline` usado experimentalmente pelo BoT-SORT, mas não os
-scripts de `tools/` nem datasets.
+O wheel inclui os pesos `player_yolo26s_1280_baseline` para detecção e
+`yolo26n-reid.onnx` para ReID, além da configuração padrão do BoT-SORT; não
+inclui os scripts de `tools/` nem datasets.
 Para uso com CUDA, instale a versão adequada do PyTorch para o ambiente.
 
 Para obter as trajetórias de um vídeo com uma calibração existente:
@@ -291,9 +291,17 @@ calculados a partir do número do quadro e do FPS informado pelo vídeo.
 
 O resultado `<nome>_field.mp4` mostra o vídeo e o campo lado a lado. Os números
 são IDs de rastreamento, que podem mudar após oclusões. Por padrão é usado o
-BoT-SORT com ReID (`botsort.yaml`), usando experimentalmente o próprio modelo de detecção como extrator de características de aparência. Não é um modelo treinado especificamente para reidentificação; a qualidade deve ser avaliada em vídeos reais. Use `--tracker bytetrack.yaml` ou `--tracker fasttrack.yaml` para comparação.
-Também é possível informar um YAML próprio para esses tipos de rastreador. Para preservar os
-dois vídeos, use diretórios `--output` diferentes. O ponto projetado é o centro da borda inferior de cada caixa, como aproximação dos pés.
+BoT-SORT com o modelo pré-treinado `yolo26n-reid.onnx` incluído no pacote e compensação de movimento de câmera desativada, apropriada para testes com câmera fixa. Avalie a qualidade em vídeos reais; isso não garante IDs persistentes após ausências longas. Use `--tracker bytetrack.yaml` ou `--tracker fasttrack.yaml` para comparação. A dependência `onnxruntime` instalada por padrão executa o ReID na CPU; para GPU é necessário um ONNX Runtime com CUDA compatível com o ambiente. Confirme o provedor ativo nos logs.
+Também é possível informar um YAML próprio para esses tipos de rastreador. Para
+BoT-SORT, copie `src/data/botsort_reid.yaml`, ajuste os limiares e passe o
+caminho por `--tracker`. Use `with_reid: false` para desativar aparência; com
+`with_reid: true`, use `model: bundled_reid` para o modelo fornecido ou informe
+um caminho para outro extrator compatível com Ultralytics. `model: auto` não é
+suportado neste pipeline independente porque ele não recebe os mapas de
+características do detector. A entrada da YOLO detectora continua configurável e
+é 1280 no extrator de trajetórias.
+
+Para preservar os dois vídeos, use diretórios `--output` diferentes. O ponto projetado é o centro da borda inferior de cada caixa, como aproximação dos pés.
 As posições exibidas vêm das caixas retornadas pelo rastreador, e podem desaparecer durante uma oclusão.
 Detecções projetadas fora do campo são identificadas como `outside`. O limiar
 padrão de detecção é `--conf 0.1`; `--show` exibe o processamento (pressione `q` para parar). Os parâmetros

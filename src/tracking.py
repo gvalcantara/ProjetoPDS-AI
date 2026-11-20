@@ -28,25 +28,28 @@ class RastreadorJogadores:
             from ultralytics.trackers.track import TRACKER_MAP
             from ultralytics.utils import IterableSimpleNamespace, YAML
             from ultralytics.utils.checks import check_yaml
-            cfg = IterableSimpleNamespace(**YAML.load(check_yaml(str(configuracao))))
+            if str(configuracao) == "botsort.yaml":
+                recurso_cfg = files(__package__).joinpath("data", "botsort_reid.yaml")
+                with as_file(recurso_cfg) as caminho_cfg:
+                    cfg = IterableSimpleNamespace(**YAML.load(str(caminho_cfg)))
+            else:
+                cfg = IterableSimpleNamespace(**YAML.load(check_yaml(str(configuracao))))
             if cfg.tracker_type not in ("fasttrack", "bytetrack", "botsort"):
                 raise ValueError("Only fasttrack, bytetrack and botsort configurations are supported.")
             if cfg.tracker_type == "botsort":
                 # The standalone tracker receives frames, not detector feature maps.
-                # Use the bundled detector as an experimental appearance encoder.
-                cfg.with_reid = True
+                if cfg.with_reid and cfg.model == "auto":
+                    raise ValueError("Standalone BoT-SORT requires an explicit ReID model when with_reid is true.")
                 if dispositivo is not None:
                     device = str(dispositivo)
                     cfg.device = f"cuda:{device}" if device.isdigit() else device
-                recurso = files(__package__).joinpath("data", "players_n_1280_baseline.pt")
-                with as_file(recurso) as modelo:
-                    cfg.model = str(modelo)
+                if cfg.with_reid and cfg.model == "bundled_reid":
+                    recurso = files(__package__).joinpath("data", "yolo26n-reid.onnx")
+                    with as_file(recurso) as modelo:
+                        cfg.model = str(modelo)
+                        rastreador = TRACKER_MAP[cfg.tracker_type](args=cfg)
+                else:
                     rastreador = TRACKER_MAP[cfg.tracker_type](args=cfg)
-                # Ultralytics otherwise sends every crop at once through a
-                # 640px predictor, which can exhaust small GPUs.
-                encoder = rastreador.encoder
-                encoder.model.predictor.args.imgsz = 224
-                rastreador.encoder = _CodificadorEmLotes(encoder)
             else:
                 rastreador = TRACKER_MAP[cfg.tracker_type](args=cfg)
         self._rastreador = rastreador

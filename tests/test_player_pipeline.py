@@ -52,6 +52,27 @@ def test_botsort_reid_uses_appearance_embeddings():
     assert second[0].id == first[0].id
 
 
+def test_botsort_custom_reid_configuration(tmp_path, monkeypatch):
+    from ultralytics.trackers.track import TRACKER_MAP
+
+    captured = []
+    monkeypatch.setitem(TRACKER_MAP, "botsort", lambda args: captured.append(args) or object())
+    config = tmp_path / "tracker.yaml"
+    config.write_text("tracker_type: botsort\nwith_reid: true\nmodel: /tmp/custom.onnx\n")
+    RastreadorJogadores(config, dispositivo="cpu")
+    assert captured[-1].model == "/tmp/custom.onnx"
+    assert captured[-1].with_reid is True
+    assert captured[-1].device == "cpu"
+
+    config.write_text("tracker_type: botsort\nwith_reid: false\nmodel: auto\n")
+    RastreadorJogadores(config, dispositivo="cpu")
+    assert captured[-1].with_reid is False
+
+    config.write_text("tracker_type: botsort\nwith_reid: true\nmodel: auto\n")
+    with pytest.raises(ValueError, match="explicit ReID model"):
+        RastreadorJogadores(config, dispositivo="cpu")
+
+
 def test_reid_limits_batch_and_preserves_feature_order():
     from src.tracking import _CodificadorEmLotes
     calls = []
